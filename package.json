@@ -1,6 +1,6 @@
 {
   "name": "diffkit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "cli for diffkit.com",
   "main": "index.js",
   "scripts": {
@@ -21,6 +21,9 @@
   "license": "mit",
   "bugs": {
     "url": "https://github.com/cainus/diffkit-cli/issues"
+  },
+  "bin": {
+    "diffkit": "index.js"
   },
   "homepage": "https://github.com/cainus/diffkit-cli#readme",
   "dependencies": {

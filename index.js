@@ -1,3 +1,6 @@
+#!/usr/bin/env node
+
+
 const axios = require("axios");
 const meow = require('meow');
 const chalk = require("chalk");
