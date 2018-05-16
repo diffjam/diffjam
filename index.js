@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-
+const path = require("path");
 const axios = require("axios");
 const meow = require('meow');
 const chalk = require("chalk");
 const pshell = require("pshell");
 const fileExists = require('mz/fs').exists;
 const inquirer = require('inquirer');
+const Conf = require('conf');
 
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
@@ -25,15 +26,16 @@ const RED_X = chalk.red("❌️");
 
 process.on("unhandledRejection", (err) => { throw err });
 
-const Conf = require('conf');
 let config;
-const getConfig = async () => {
-  const exists = await fileExists("./diffkit.json");
+const getConfig = async (file = "./diffkit.json") => {
+  const configName = path.basename(file).slice(0, -1 * path.extname(file).length)
+  const exists = await fileExists(file);
   if (exists) {
     config = new Conf({
-      configName: "diffkit",
+      configName,
       cwd: ".",
     });
+    return;
   }
 };
 
@@ -239,7 +241,7 @@ const actionCinch = async (questName) => {
 
 // run!
 const run = async function(action, param1, flags) {
-  await getConfig();
+  await getConfig(flags.config);
   switch (action) {
     case "init": return actionInit();     // create the config
     case "quest": return actionQuest();   // add a quest to the config
@@ -258,12 +260,13 @@ const cli = meow(`
     Examples
       $ diffkit report
 `, {
-    flags: {
-        action: {
-            type: 'string',
-        }
+  flags: {
+    config: {
+      type: "string",
+      alias: "c",
     }
+  }
 });
 
-run(cli.input[0], cli.input[1]);
+run(cli.input[0], cli.input[1], cli.flags);
 
