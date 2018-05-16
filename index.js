@@ -116,13 +116,14 @@ const actionCount = async function(options = {}) {
   const checks = [];
   const start = new Date();
   let hadABreach = false;  // the new code is worse than the old code for this quest
-  for (const name in quests) {
+
+  await Promise.all(Object.keys(quests).map(async name => {
     const quest = quests[name];
     const questStart = new Date();
     const result = await countQuest(quest);
     hadABreach = hadABreach || failedBaseline(quest, result);
     logQuestResult(name, quest, result, Date.now() - questStart.getTime());
-  }
+  }));
 
   if (hadABreach && options.check) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
