@@ -127,10 +127,9 @@ const actionCount = async function(options = {}) {
 
   if (hadABreach && options.check) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
-    process.exit(1);
+    process.exitCode = 1;
   }
   console.log(`Done in ${(Date.now() - start.getTime())} ms.`);
-  process.exit(0);
 }
 
 const actionInit = async function () {
@@ -153,8 +152,10 @@ const actionQuest = async function (name, command) {
   if (!config) {
     // TODO should just call actionInit instead of exiting
     console.error("Error: There's no config to add a quest to.  Use `diffkit init` to create one.");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
+
   if (!name) {
     name = (await inquirer.prompt({
       "type": "input",
@@ -199,17 +200,18 @@ const actionQuest = async function (name, command) {
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");
-    process.exit(0);
+    return;
   }
-
 };
 
 const actionCinch = async (questName) => {
   if (!config) {
     // TODO should just call actionInit instead of exiting
     console.error("Error: There's no config to add a quest to.  Use `diffkit init` to create one.");
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
+
   const quests = config.get("quests");
   const quest = quests[questName];
 
@@ -218,19 +220,21 @@ const actionCinch = async (questName) => {
     for (const name in quests) {
       console.error(`* ${name}`);
     }
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
+
   const count = await countQuest(quest);
   const hadABreach = failedBaseline(quest, count);
   if (hadABreach) {
     console.error("Cannot cinch a metric that doesn't even meet the baseline");
     console.error(`${RED_X} ${chalk.red.bold(questName)}: ${count} (expected ${quest.baseline} or ${quest.minimize ? "less" : "more"})`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
+
   config.set(`quests.${questName}.baseline`, count);
   console.log(`Quest ${questName} cinched to ${count}`);
-
-
 }
 
 // run!
