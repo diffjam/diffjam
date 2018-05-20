@@ -1,6 +1,6 @@
 {
   "name": "diffkit",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "cli for diffkit.com",
   "main": "index.js",
   "scripts": {
