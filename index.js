@@ -39,23 +39,16 @@ const getConfig = async (file = "./diffkit.json") => {
   }
 };
 
-
-/*
-async function postMetric (apiKey, questId, value) {
-  if (!questId) {
-    throw new Error("diffkit.metric needs a QUESTID");
-  }
-  if (value == null) {
-    throw new Error("diffkit.metric needs a VALUE");
-  }
-  if (!apiKey) {
-    throw new Error("diffkit.metric needs an API_KEY");
-  }
+async function postMetrics (apiKey, successes, breaches) {
   let response;
+  const body = {
+    successes,
+    breaches,
+  }
   try {
     response = await axios.post(
-      `https://diffkit.com/api/quest/${questId}/metric?api_key=${apiKey}`, {
-      value,
+      `https://gitratchet.com/api/record?api_key=${apiKey}`, {
+      body,
     });
     if (response.status !== 200) {
       throw new Error(`Non-200 response from diffkit.com: ${response.status}`)
@@ -64,29 +57,7 @@ async function postMetric (apiKey, questId, value) {
     console.log("There was some error hitting diffkit.com: ", ex);
   }
 }
-*/
 
-/* async function getLatestMetric (apiKey, questId, value) {
-  if (!questId) {
-    throw new Error("diffkit.metric needs a QUESTID");
-  }
-  if (!apiKey) {
-    throw new Error("diffkit.metric needs an API_KEY");
-  }
-  let response;
-  try {
-    response = await axios.get(
-      `https://diffkit.com/api/quest/${questId}/metric?api_key=${apiKey}`, {
-      value,
-    });
-    if (response.status !== 200) {
-      throw new Error(`Non-200 response from diffkit.com: ${response.status}`)
-    }
-  } catch (ex) {
-    console.log("There was some error hitting diffkit.com: ", ex);
-  }
-}
- */
 async function countQuest(quest) {
   const res2 = await pshell(quest.command, { echoCommand: false, captureOutput: true });
   if (res2.code !== 0) {
@@ -113,19 +84,47 @@ const failedBaseline = (quest, result) => {
   return false;
 }
 
-const actionCount = async function(options = {}) {
+const actionCount = async function(options = {}, flags) {
+  //console.log("options: ", options);
+  //console.log("flags: ", flags);
+
+
   const quests = config.get("quests");
   const checks = [];
   const start = new Date();
   let hadABreach = false;  // the new code is worse than the old code for this quest
+  const successes = [];
+  const breaches = [];
 
   await Promise.all(Object.keys(quests).map(async name => {
     const quest = quests[name];
     const questStart = new Date();
     const result = await countQuest(quest);
-    hadABreach = hadABreach || failedBaseline(quest, result);
+    if (failedBaseline(quest, result)) {
+      hadABreach = true;
+      breaches.push({name, quest, result, duration: Date.now() - questStart.getTime()})
+    } else {
+      successes.push({name, quest, result, duration: Date.now() - questStart.getTime()})
+    }
     logQuestResult(name, quest, result, Date.now() - questStart.getTime());
   }));
+
+  if (hadABreach) {
+    console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
+  }
+
+  if (flags.record) {
+    console.log("sending metrics to server...");
+    console.log("successes: ", successes);
+    console.log("breaches: ", breaches);
+    const apiKey = process.env.DIFFKIT_API_KEY;
+    if (!apiKey) {
+      console.error("Missing api key!  Could not post metrics");
+      process.exitCode = 1;
+      return;
+    }
+    await postMetrics(apiKey, successes, breaches);
+  }
 
   if (hadABreach && options.check) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
@@ -245,10 +244,9 @@ const run = async function(action, param1, flags) {
   switch (action) {
     case "init": return actionInit();     // create the config
     case "quest": return actionQuest();   // add a quest to the config
-    case "count": return actionCount();   // run the quest counter
+    case "count": return actionCount({}, flags);   // run the quest counter
     case "check": return actionCount({check: true});   // count + fail if warranted
     case "cinch": return actionCinch(param1);   // count + fail if warranted
-    //case "report-from-build": return report(); // report a count from the build
     default: throw new Error(`unknown action: ${action}`);
   }
 };
