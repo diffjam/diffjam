@@ -84,7 +84,7 @@ const failedBaseline = (quest, result) => {
   return false;
 }
 
-const actionCount = async function(options = {}, flags) {
+const actionCount = async function(options = {}, flags = {}) {
   //console.log("options: ", options);
   //console.log("flags: ", flags);
 
