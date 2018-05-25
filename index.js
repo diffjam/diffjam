@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-"use strict";
-
 const path = require("path");
 const axios = require("axios");
 const meow = require('meow');
@@ -13,6 +11,9 @@ const Conf = require('conf');
 
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
+
+// this is a sentinel value
+const DONE = new Error("DONE")
 
 // TODO verify only when user is me
 
@@ -117,17 +118,17 @@ const actionCount = async function(options = {}, flags = {}) {
     const apiKey = process.env.DIFFKIT_API_KEY;
     if (!apiKey) {
       console.error("Missing api key!  Could not post metrics");
-      process.exitCode = 1;
-      return;
+      throw DONE;
     }
     await postMetrics(apiKey, successes, breaches);
   }
 
   if (breaches.length && options.check) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
-    process.exitCode = 1;
   }
   console.log(`Done in ${(Date.now() - start.getTime())} ms.`);
+
+  if (breaches.length && options.check) throw DONE;
 }
 
 const actionInit = async function () {
@@ -140,7 +141,7 @@ const actionInit = async function () {
     console.log("Created diffkit.json for diffkit configuration.");
   } else {
     console.error("A diffkit.json already exists.  Skipping initialization.");
-    process.exitCode = 1;
+    throw DONE;
   }
 }
 
@@ -150,8 +151,7 @@ const actionQuest = async function (name, command) {
   if (!config) {
     // TODO should just call actionInit instead of exiting
     console.error("Error: There's no config to add a quest to.  Use `diffkit init` to create one.");
-    process.exitCode = 1;
-    return;
+    throw DONE;
   }
 
   if (!name) {
@@ -205,8 +205,7 @@ const actionCinch = async (questName) => {
   if (!config) {
     // TODO should just call actionInit instead of exiting
     console.error("Error: There's no config to add a quest to.  Use `diffkit init` to create one.");
-    process.exitCode = 1;
-    return;
+    throw DONE;
   }
 
   const quests = config.get("quests");
@@ -217,8 +216,7 @@ const actionCinch = async (questName) => {
     for (const name in quests) {
       console.error(`* ${name}`);
     }
-    process.exitCode = 1;
-    return;
+    throw DONE;
   }
 
   const count = await countQuest(quest);
@@ -226,8 +224,7 @@ const actionCinch = async (questName) => {
   if (hadABreach) {
     console.error("Cannot cinch a metric that doesn't even meet the baseline");
     console.error(`${RED_X} ${chalk.red.bold(questName)}: ${count} (expected ${quest.baseline} or ${quest.minimize ? "less" : "more"})`);
-    process.exitCode = 1;
-    return;
+    throw DONE;
   }
 
   config.set(`quests.${questName}.baseline`, count);
@@ -235,8 +232,11 @@ const actionCinch = async (questName) => {
 }
 
 // run!
-const run = async function(action, param1, flags) {
-  await getConfig(flags.config);
+// the _config argument is provided for testing so we can avoid dealing with the
+// file system and just pass in javascript objects. It must satisfy the same get/set
+// interface as Conf
+const run = async function(action, param1, flags, _config) {
+  if (_config) config = _config;
   switch (action) {
     case "init": return actionInit(); // create the config
     case "quest": return actionQuest(); // add a quest to the config
@@ -262,4 +262,23 @@ const cli = meow(`
   }
 });
 
-run(cli.input[0], cli.input[1], cli.flags);
+module.exports = run;
+if (module.parent == null) {
+  // we set it up this way so we can throw errors where we want to, which is nice
+  // for testing and also for control flow – when we want to exit early we can
+  // just throw from anywhere. We have a sentiel value error that indicates some
+  // expected error occurred and we want to exit with 1. Other errors are rethrown
+  (async function () {
+    try {
+      await getConfig(cli.flags.config);
+      run(cli.input[0], cli.input[1], cli.flags);
+    } catch (err) {
+      // console.log(err)
+      if (err === DONE) {
+        process.exitCode = 1;
+      } else {
+        throw err
+      }
+    }
+  }())
+}
