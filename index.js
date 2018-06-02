@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+"use strict";
+
 const path = require("path");
 const axios = require("axios");
 const meow = require('meow');
@@ -35,7 +37,6 @@ const getConfig = async (file = "./diffkit.json") => {
       configName,
       cwd: ".",
     });
-    return;
   }
 };
 
@@ -44,14 +45,14 @@ async function postMetrics (apiKey, successes, breaches) {
   const body = {
     successes,
     breaches,
-  }
+  };
   try {
     response = await axios.post(
       `https://gitratchet.com/api/record?api_key=${apiKey}`, {
       body,
     });
     if (response.status !== 200) {
-      throw new Error(`Non-200 response from diffkit.com: ${response.status}`)
+      throw new Error(`Non-200 response from diffkit.com: ${response.status}`);
     }
   } catch (ex) {
     console.log("There was some error hitting diffkit.com: ", ex);
@@ -63,18 +64,18 @@ async function countQuest(quest) {
   if (res2.code !== 0) {
     throw new Error("some error getting matches for countQuest");
   }
-  const matches = Number.parseInt(res2.stdout);
+  const matches = Number.parseInt(res2.stdout, 10);
   return matches;
-};
+}
 
 const logQuestResult = (name, quest, result, duration) => {
   if (failedBaseline(quest, result)) {
     return console.error(`${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${quest.baseline} or ${quest.minimize ? "less" : "more"})`);
   }
   return console.log(`${GREEN_CHECK} ${chalk.bold(name)}: ${result} (in ${duration} ms)`);
-}
+};
 
-const failedBaseline = (quest, result) => {
+function failedBaseline (quest, result) {
   if (quest.minimize && (quest.baseline < result)) {
     return true;
   }
@@ -88,11 +89,8 @@ const actionCount = async function(options = {}, flags = {}) {
   //console.log("options: ", options);
   //console.log("flags: ", flags);
 
-
   const quests = config.get("quests");
-  const checks = [];
   const start = new Date();
-  let hadABreach = false;  // the new code is worse than the old code for this quest
   const successes = [];
   const breaches = [];
 
@@ -101,7 +99,6 @@ const actionCount = async function(options = {}, flags = {}) {
     const questStart = new Date();
     const result = await countQuest(quest);
     if (failedBaseline(quest, result)) {
-      hadABreach = true;
       breaches.push({name, quest, result, duration: Date.now() - questStart.getTime()})
     } else {
       successes.push({name, quest, result, duration: Date.now() - questStart.getTime()})
@@ -109,7 +106,7 @@ const actionCount = async function(options = {}, flags = {}) {
     logQuestResult(name, quest, result, Date.now() - questStart.getTime());
   }));
 
-  if (hadABreach) {
+  if (breaches.length) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
   }
 
@@ -126,7 +123,7 @@ const actionCount = async function(options = {}, flags = {}) {
     await postMetrics(apiKey, successes, breaches);
   }
 
-  if (hadABreach && options.check) {
+  if (breaches.length && options.check) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
     process.exitCode = 1;
   }
@@ -143,7 +140,7 @@ const actionInit = async function () {
     console.log("Created diffkit.json for diffkit configuration.");
   } else {
     console.error("A diffkit.json already exists.  Skipping initialization.");
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 
@@ -158,41 +155,41 @@ const actionQuest = async function (name, command) {
   }
 
   if (!name) {
-    name = (await inquirer.prompt({
+    ({ name } = await inquirer.prompt({
       "type": "input",
       "name": "name",
       "message": "Enter a name for this quest: "
-    })).name;
+    }))
   }
 
   if (!command) {
-    command = (await inquirer.prompt({
+    ({ command } = await inquirer.prompt({
       "type": "input",
       "name": "command",
       "message": "Enter the command that will return your metric: ",
-    })).command;
+    }))
   }
 
-  let quest = {
+  const quest = {
     command,
   };
 
   const matches = await countQuest(quest);
 
-  const trendDirection = (await inquirer.prompt({
+  const { trendDirection } = await inquirer.prompt({
     "type": "list",
     "name": "trendDirection",
     "choices": ["minimize", "maximize"],
     "message": `Do you want to minimize or maximize for this quest?`,
-  })).trendDirection;
+  });
 
   quest.minimize = trendDirection === "minimize";
 
-  const shouldContinue = (await inquirer.prompt({
+  const { shouldContinue } = await inquirer.prompt({
     "type": "confirm",
     "name": "shouldContinue",
     "message": `There are currently ${matches} matches for that configuration.  Save it?`,
-  })).shouldContinue;
+  });
 
   quest.baseline = matches;
 
@@ -201,7 +198,6 @@ const actionQuest = async function (name, command) {
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");
-    return;
   }
 };
 
@@ -242,11 +238,11 @@ const actionCinch = async (questName) => {
 const run = async function(action, param1, flags) {
   await getConfig(flags.config);
   switch (action) {
-    case "init": return actionInit();     // create the config
-    case "quest": return actionQuest();   // add a quest to the config
-    case "count": return actionCount({}, flags);   // run the quest counter
-    case "check": return actionCount({check: true});   // count + fail if warranted
-    case "cinch": return actionCinch(param1);   // count + fail if warranted
+    case "init": return actionInit(); // create the config
+    case "quest": return actionQuest(); // add a quest to the config
+    case "count": return actionCount({}, flags); // run the quest counter
+    case "check": return actionCount({check: true}); // count + fail if warranted
+    case "cinch": return actionCinch(param1); // count + fail if warranted
     default: throw new Error(`unknown action: ${action}`);
   }
 };
@@ -267,4 +263,3 @@ const cli = meow(`
 });
 
 run(cli.input[0], cli.input[1], cli.flags);
-
