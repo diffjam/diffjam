@@ -85,12 +85,8 @@ function failedBaseline (quest, result) {
   return false;
 }
 
-const actionCount = async function(options = {}, flags = {}) {
-  //console.log("options: ", options);
-  //console.log("flags: ", flags);
-
+const getResults = async () => {
   const quests = config.get("quests");
-  const start = new Date();
   const successes = [];
   const breaches = [];
 
@@ -105,6 +101,19 @@ const actionCount = async function(options = {}, flags = {}) {
     }
     logQuestResult(name, quest, result, Date.now() - questStart.getTime());
   }));
+  return {
+    successes,
+    breaches,
+  }
+}
+
+const actionCount = async function(options = {}, flags = {}) {
+  //console.log("options: ", options);
+  //console.log("flags: ", flags);
+  const start = new Date();
+  const results = await getResults();
+  const {breaches, successes} = results;
+
 
   if (breaches.length) {
     console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
@@ -209,8 +218,12 @@ const actionCinch = async (questName) => {
     return;
   }
 
+  const results = await getResults();
+
+  /*
   const quests = config.get("quests");
   const quest = quests[questName];
+
 
   if (!quest) {
     console.error("No quest by that name exists.  Possible quest names: ");
@@ -223,16 +236,28 @@ const actionCinch = async (questName) => {
 
   const count = await countQuest(quest);
   const hadABreach = failedBaseline(quest, count);
-  if (hadABreach) {
+  */
+  if (results.breaches.length > 0) {
+    const [firstBreach] = results.breaches;
     console.error("Cannot cinch a metric that doesn't even meet the baseline");
-    console.error(`${RED_X} ${chalk.red.bold(questName)}: ${count} (expected ${quest.baseline} or ${quest.minimize ? "less" : "more"})`);
+    console.error(`${RED_X} ${chalk.red.bold(firstBreach.name)}: ${firstBreach.result} (expected ${firstBreach.quest.baseline} or ${firstBreach.quest.minimize ? "less" : "more"})`);
     process.exitCode = 1;
     return;
   }
 
-  config.set(`quests.${questName}.baseline`, count);
-  console.log(`Quest ${questName} cinched to ${count}`);
+  for (const result of results.successes) {
+
+    let exceeds = (result.quest.minimize && result.result < result.quest.baseline);
+    exceeds = exceeds || (result.quest.maximize && result.result > result.quest.baseline);
+
+    if (exceeds) {
+      config.set(`quests.${result.name}.baseline`, result.result);
+      console.log(`${GREEN_CHECK} ${chalk.bold(result.name)} was just cinched from ${result.quest.baseline} to ${chalk.bold(result.result)}!`);
+    }
+
+  }
 }
+
 
 // run!
 const run = async function(action, param1, flags) {
