@@ -13,6 +13,13 @@
 * use `diffkit --check` to have the process fail when a count is below a baseline
 * use `DIFFKIT_API_KEY=[your api key] diffkit --record` to record counts to diffkit.com.
 
-## example searches
+### using an alernative configuration file
+Specify it with the `--config` flag.  For a config named `filename.json`,
+`diffkit [command] --config=filename.json`
+
+### example searches
 * count all javascript files: `git ls-files "*.js" | wc -l`
 * count all instances of the string TODO: `git grep TODO | wc -l`
+
+## Development
+The development README is [here](devREADME.md).
