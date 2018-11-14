@@ -12,8 +12,7 @@ const Conf = require('conf');
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
-// this is a sentinel value
-const DONE = new Error("DONE")
+class NonZeroExitError extends Error {}
 
 // TODO verify only when user is me
 
@@ -127,7 +126,7 @@ const actionCount = async function(options = {}, flags = {}) {
     const apiKey = process.env.DIFFKIT_API_KEY;
     if (!apiKey) {
       console.error("Missing api key!  Could not post metrics");
-      throw DONE;
+      throw new NonZeroExitError();
     }
     await postMetrics(apiKey, successes, breaches);
   }
@@ -137,7 +136,7 @@ const actionCount = async function(options = {}, flags = {}) {
   }
   console.log(`Done in ${(Date.now() - start.getTime())} ms.`);
 
-  if (breaches.length && options.check) throw DONE;
+  if (breaches.length && options.check) throw new NonZeroExitError();
 }
 
 const actionInit = async function () {
@@ -150,7 +149,7 @@ const actionInit = async function () {
     console.log("Created diffkit.json for diffkit configuration.");
   } else {
     console.error("A diffkit.json already exists.  Skipping initialization.");
-    throw DONE;
+    throw new NonZeroExitError();
   }
 }
 
@@ -160,7 +159,7 @@ const actionQuest = async function (name, command) {
   if (!config) {
     // TODO should just call actionInit instead of exiting
     console.error("Error: There's no config to add a quest to.  Use `diffkit init` to create one.");
-    throw DONE;
+    throw new NonZeroExitError();
   }
 
   if (!name) {
@@ -214,7 +213,7 @@ const actionCinch = async (questName) => {
   if (!config) {
     // TODO should just call actionInit instead of exiting
     console.error("Error: There's no config to add a quest to.  Use `diffkit init` to create one.");
-    throw DONE;
+    throw new NonZeroExitError();
   }
 
   const results = await getResults();
@@ -239,7 +238,7 @@ const actionCinch = async (questName) => {
     const [firstBreach] = results.breaches;
     console.error("Cannot cinch a metric that doesn't even meet the baseline");
     console.error(`${RED_X} ${chalk.red.bold(firstBreach.name)}: ${firstBreach.result} (expected ${firstBreach.quest.baseline} or ${firstBreach.quest.minimize ? "less" : "more"})`);
-    throw DONE;
+    throw new NonZeroExitError();
   }
 
   for (const result of results.successes) {
@@ -293,17 +292,16 @@ if (module.parent == null) {
   // for testing and also for control flow – when we want to exit early we can
   // just throw from anywhere. We have a sentiel value error that indicates some
   // expected error occurred and we want to exit with 1. Other errors are rethrown
-  (async function () {
+  (async () => {
     try {
       await getConfig(cli.flags.config);
       run(cli.input[0], cli.input[1], cli.flags);
     } catch (err) {
-      // console.log(err)
-      if (err === DONE) {
+      if (err instanceof NonZeroExitError) {
         process.exitCode = 1;
       } else {
         throw err
       }
     }
-  }())
+  })()
 }
