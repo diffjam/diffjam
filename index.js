@@ -87,20 +87,28 @@ function failedBaseline (quest, result) {
 
 const getResults = async () => {
   const quests = config.get("quests");
-  const successes = [];
-  const breaches = [];
 
-  await Promise.all(Object.keys(quests).map(async name => {
+  const runs = await Promise.all(Object.keys(quests).map(async name => {
     const quest = quests[name];
     const questStart = new Date();
     const result = await countQuest(quest);
-    if (failedBaseline(quest, result)) {
-      breaches.push({name, quest, result, duration: Date.now() - questStart.getTime()})
-    } else {
-      successes.push({name, quest, result, duration: Date.now() - questStart.getTime()})
-    }
-    logQuestResult(name, quest, result, Date.now() - questStart.getTime());
+    const duration = Date.now() - questStart.getTime()
+    return { name, quest, result, duration, success: !failedBaseline(quest, result) }
   }));
+
+  const successes = [];
+  const breaches = [];
+
+  for (const run of runs) {
+    const { name, quest, result, duration, success } = run;
+    logQuestResult(name, quest, result, duration);
+    if (success) {
+      successes.push(result);
+    } else {
+      breaches.push(result);
+    }
+  }
+
   return {
     successes,
     breaches,
