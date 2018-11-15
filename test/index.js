@@ -26,7 +26,7 @@ describe("diffkit-cli", () => {
       });
 
       const err = await getRejection(cli("check", null, {}, config))
-      expect(err.message).toBe("DONE");
+      expect(err.name).toBe("NonZeroExitError");
     });
 
     it("succeeds if you are below the baseline", async () => {

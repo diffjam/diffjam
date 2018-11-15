@@ -12,7 +12,12 @@ const Conf = require('conf');
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
-class NonZeroExitError extends Error {}
+class NonZeroExitError extends Error {
+  constructor(msg) {
+    super(msg);
+    this.name = this.constructor.name;
+  }
+}
 
 // TODO verify only when user is me
 
@@ -139,7 +144,7 @@ const actionCount = async function(options = {}, flags = {}) {
   if (breaches.length && options.check) throw new NonZeroExitError();
 }
 
-const actionInit = async function () {
+const actionInit = async () => {
   if (!config) {
     config = new Conf({
       configName: "diffkit",
@@ -295,7 +300,7 @@ if (module.parent == null) {
   (async () => {
     try {
       await getConfig(cli.flags.config);
-      run(cli.input[0], cli.input[1], cli.flags);
+      await run(cli.input[0], cli.input[1], cli.flags);
     } catch (err) {
       if (err instanceof NonZeroExitError) {
         process.exitCode = 1;
