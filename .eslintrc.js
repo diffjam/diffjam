@@ -231,7 +231,7 @@ module.exports = {
         "space-infix-ops": "error",
         "space-unary-ops": "error",
         "spaced-comment": "off",
-        "strict": "error",
+        "strict": "off",
         "switch-colon-spacing": "error",
         "symbol-description": "error",
         "template-curly-spacing": "error",

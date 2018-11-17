@@ -1,6 +1,6 @@
 {
   "name": "diffkit",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "cli for diffkit.com",
   "main": "index.js",
   "scripts": {
@@ -28,12 +28,15 @@
   "homepage": "https://github.com/cainus/diffkit-cli#readme",
   "dependencies": {
     "axios": "0.18.0",
+    "blessed": "^0.1.81",
     "chalk": "2.4.1",
     "conf": "1.4.0",
     "inquirer": "5.2.0",
     "meow": "5.0.0",
     "multispinner": "0.2.1",
     "mz": "2.7.0",
-    "pshell": "1.1.0"
+    "pshell": "1.1.0",
+    "react": "^16.6.1",
+    "react-blessed": "^0.3.0"
   }
 }
