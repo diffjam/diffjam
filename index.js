@@ -20,7 +20,7 @@ const logo =
 
 // TODO verify only when user is me
 
-// should the diffkit.json contain the latest counts?  should it allow you to relock?
+// should the diffjam.json contain the latest counts?  should it allow you to relock?
 // need the readme to show examples of how to count.  usually you don't want counts to include ignored files
 
 // conf for config? https://github.com/sindresorhus/conf
@@ -32,7 +32,7 @@ process.on("unhandledRejection", err => {
 });
 
 let config;
-const getConfig = async (file = "./diffkit.json") => {
+const getConfig = async (file = "./diffjam.json") => {
   const configName = path
     .basename(file)
     .slice(0, -1 * path.extname(file).length);
@@ -59,10 +59,10 @@ async function postMetrics(apiKey, successes, breaches) {
       }
     );
     if (response.status !== 200) {
-      throw new Error(`Non-200 response from diffkit.com: ${response.status}`);
+      throw new Error(`Non-200 response from diffjam.com: ${response.status}`);
     }
   } catch (ex) {
-    console.log("There was some error hitting diffkit.com: ", ex);
+    console.log("There was some error hitting diffjam.com: ", ex);
   }
 }
 
@@ -163,7 +163,7 @@ const actionCount = async function(options = {}, flags = {}) {
     console.log("sending metrics to server...");
     console.log("successes: ", successes);
     console.log("breaches: ", breaches);
-    const apiKey = process.env.DIFFKIT_API_KEY;
+    const apiKey = process.env.DIFFJAM_API_KEY;
     if (!apiKey) {
       console.error("Missing api key!  Could not post metrics");
       process.exitCode = 1;
@@ -182,7 +182,7 @@ const actionCount = async function(options = {}, flags = {}) {
 const ensureConfig = function() {
   if (!config) {
     config = new Conf({
-      configName: "diffkit",
+      configName: "diffjam",
       cwd: "."
     });
     config.set("quests", {});
@@ -192,9 +192,9 @@ const ensureConfig = function() {
 const actionInit = async function() {
   if (!config) {
     ensureConfig();
-    console.log("Created diffkit.json for diffkit configuration.");
+    console.log("Created diffjam.json for diffjam configuration.");
   } else {
-    console.error("A diffkit.json already exists.  Skipping initialization.");
+    console.error("A diffjam.json already exists.  Skipping initialization.");
     process.exitCode = 1;
   }
 };
@@ -501,13 +501,13 @@ const run = async function(action, param1, flags) {
 const cli = meow(
   `
     Usage
-      $ diffkit <action>
+      $ diffjam <action>
 
     Examples
-      $ diffkit menu
-      $ diffkit count
-      $ diffkit check
-      $ diffkit report
+      $ diffjam menu
+      $ diffjam count
+      $ diffjam check
+      $ diffjam report
 `,
   {
     flags: {

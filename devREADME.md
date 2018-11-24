@@ -1,7 +1,7 @@
 # manually testing
 
-Testing locally with the `test-diffkit.json` config file
-`node ./index.js count --config=test-diffkit.json`
+Testing locally with the `test-diffjam.json` config file
+`node ./index.js count --config=test-diffjam.json`
 
 
-`node ./index.js menu --config=test-diffkit.json`
+`node ./index.js menu --config=test-diffjam.json`

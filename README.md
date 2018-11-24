@@ -1,21 +1,21 @@
-# diffkit-cli
+# diffjam
 
 
 ## commands
-* `diffkit init` : create a new diffkit configuration
-* `diffkit quest` : add a new quest.  Quests are goals for your code.
-* `diffkit count` : see the current values for all quests.
+* `diffjam init` : create a new diffjam configuration
+* `diffjam quest` : add a new quest.  Quests are goals for your code.
+* `diffjam count` : see the current values for all quests.
 
-* `diffkit cinch` : Change the baselines to strictest passable valuable for the code.
-* `diffkit check` : Same as `count`, but it exits with a code of 1 if the counts aren't good enough for the baselines.
+* `diffjam cinch` : Change the baselines to strictest passable valuable for the code.
+* `diffjam check` : Same as `count`, but it exits with a code of 1 if the counts aren't good enough for the baselines.
 
-### extended `diffkit count` usage:
-* use `diffkit --check` to have the process fail when a count is below a baseline
-* use `DIFFKIT_API_KEY=[your api key] diffkit --record` to record counts to diffkit.com.
+### extended `diffjam count` usage:
+* use `diffjam --check` to have the process fail when a count is below a baseline
+* use `DIFFJAM_API_KEY=[your api key] diffjam --record` to record counts to diffjam.com.
 
 ### using an alernative configuration file
 Specify it with the `--config` flag.  For a config named `filename.json`,
-`diffkit [command] --config=filename.json`
+`diffjam [command] --config=filename.json`
 
 ### example searches
 * count all javascript files: `git ls-files "*.js" | wc -l`

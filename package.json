@@ -1,31 +1,31 @@
 {
-  "name": "diffkit",
+  "name": "diffjam",
   "version": "1.1.0",
-  "description": "cli for diffkit.com",
+  "description": "cli for diffjam.com",
   "main": "index.js",
   "scripts": {
     "test": "make test"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cainus/diffkit-cli.git"
+    "url": "git+https://github.com/cainus/diffjam.git"
   },
   "keywords": [
     "technical",
     "debt",
     "code",
     "source",
-    "diffkit"
+    "diffjam"
   ],
   "author": "gregg@caines.ca",
   "license": "mit",
   "bugs": {
-    "url": "https://github.com/cainus/diffkit-cli/issues"
+    "url": "https://github.com/cainus/diffjam/issues"
   },
   "bin": {
-    "diffkit": "index.js"
+    "diffjam": "index.js"
   },
-  "homepage": "https://github.com/cainus/diffkit-cli#readme",
+  "homepage": "https://github.com/cainus/diffjam#readme",
   "dependencies": {
     "axios": "0.18.0",
     "blessed": "^0.1.81",
