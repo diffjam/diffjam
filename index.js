@@ -28,6 +28,7 @@ const logo =
 // asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
 
 process.on("unhandledRejection", err => {
+  console.error("err: ", err);
   throw err;
 });
 
@@ -66,11 +67,18 @@ async function postMetrics(apiKey, successes, breaches) {
   }
 }
 
-async function countQuest(quest) {
-  const res2 = await pshell(quest.command, {
-    echoCommand: false,
-    captureOutput: true
-  });
+async function countPolicy(policy) {
+  let res2;
+  try {
+    res2 = await pshell(policy.command, {
+      echoCommand: false,
+      captureOutput: true
+    });
+  } catch (ex) {
+    console.error("error running shell command ", ex);
+    console.error("policy: ", policy);
+    throw new Error("some error getting matches for countQuest");
+  }
   if (res2.code !== 0) {
     throw new Error("some error getting matches for countQuest");
   }
@@ -78,12 +86,12 @@ async function countQuest(quest) {
   return matches;
 }
 
-const logQuestResult = (name, quest, result, duration) => {
-  if (failedBaseline(quest, result)) {
+const logQuestResult = (name, policy, result, duration) => {
+  if (failedBaseline(policy, result)) {
     return console.error(
       `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${
-        quest.baseline
-      } or ${quest.minimize ? "less" : "more"})`
+        policy.baseline
+      } or ${policy.minimize ? "less" : "more"})`
     );
   }
   return console.log(
@@ -91,11 +99,11 @@ const logQuestResult = (name, quest, result, duration) => {
   );
 };
 
-function failedBaseline(quest, result) {
-  if (quest.minimize && quest.baseline < result) {
+function failedBaseline(policy, result) {
+  if (policy.minimize && policy.baseline < result) {
     return true;
   }
-  if (quest.maximize && quest.baseline > result) {
+  if (policy.maximize && policy.baseline > result) {
     return true;
   }
   return false;
@@ -106,9 +114,9 @@ const getQuestNames = () => {
   return Object.keys(quests);
 };
 
-const questIsInGuardMode = (quest) => {
-  return quest.mode && quest.mode.guard;
-}
+const questIsInGuardMode = policy => {
+  return policy.mode && policy.mode.guard;
+};
 
 const getResults = async () => {
   const quests = config.get("quests");
@@ -119,7 +127,7 @@ const getResults = async () => {
     Object.keys(quests).map(async name => {
       const quest = quests[name];
       const questStart = new Date();
-      const result = await countQuest(quest);
+      const result = await countPolicy(quest);
       let failed = false;
       if (failedBaseline(quest, result)) {
         failed = true;
@@ -150,13 +158,31 @@ const getResults = async () => {
   };
 };
 
-const actionCount = async function(options = {}, flags = {}) {
+const logCheckFailedError = () => {
+  console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
+};
+
+const actionCheck = async function() {
   const start = new Date();
   const results = await getResults();
   const { breaches, successes } = results;
 
   if (breaches.length) {
-    console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
+    breaches.map(logBreachError);
+    logCheckFailedError();
+    process.exitCode = 1;
+  }
+  console.log(`Done in ${Date.now() - start.getTime()} ms.`);
+};
+
+const actionCount = async function(flags = {}) {
+  const start = new Date();
+  const results = await getResults();
+  const { breaches, successes } = results;
+
+  if (breaches.length) {
+    breaches.map(logBreachError);
+    logCheckFailedError();
   }
 
   if (flags.record) {
@@ -172,10 +198,6 @@ const actionCount = async function(options = {}, flags = {}) {
     await postMetrics(apiKey, successes, breaches);
   }
 
-  if (breaches.length && options.check) {
-    console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
-    process.exitCode = 1;
-  }
   console.log(`Done in ${Date.now() - start.getTime()} ms.`);
 };
 
@@ -215,7 +237,7 @@ const actionMainMenu = async function(name, command) {
     "Choose an action",
     _.extend(
       {
-        "new quest": { type: "new_quest" },
+        "new policy": { type: "new_quest" },
         "cinch - record the latest counts to the local config": {
           type: "cinch"
         },
@@ -230,29 +252,54 @@ const actionMainMenu = async function(name, command) {
 
   switch (mainMenuChoice.type) {
     case "new_quest":
-      return actionNewQuest();
+      return actionNewPolicy();
     case "cinch":
       return actionCinch();
     case "count":
       return actionCount();
     case "check":
-      return actionCount({ check: true }); // count + fail if warranted
+      return actionCheck(); // count + fail if warranted
     case "edit_quest":
-      return actionModifyQuest(mainMenuChoice.name);
+      return actionPolicyModify(mainMenuChoice.name);
     default:
       throw new Error(`unknown choice: ${mainMenuChoice}`);
   }
 };
 
-const actionDeleteQuest = async function(name) {
-  const quest = config.get(`quests.${name}`);
+const actionPolicyDescriptionEdit = async function(name) {
+  const key = `quests.${name}`;
+  const quest = config.get(key);
 
   if (!quest) {
-    console.error("There was no quest named: ", name);
+    console.error("There was no policy named: ", name);
     return process.exit(1);
   }
 
-  if (!await ui.confirm(`Are you sure you want to delete the quest named "${name}"?`)){
+  if (!quest.description) {
+    console.log("There currently is no description");
+  } else {
+    console.log("The current description is: ");
+    console.log(quest.description);
+  }
+
+  quest.description = await ui.textInput("Give a new description: ");
+
+  config.set(key, quest);
+};
+
+const actionPolicyDelete = async function(name) {
+  const quest = config.get(`quests.${name}`);
+
+  if (!quest) {
+    console.error("There was no policy named: ", name);
+    return process.exit(1);
+  }
+
+  if (
+    !(await ui.confirm(
+      `Are you sure you want to delete the policy named "${name}"?`
+    ))
+  ) {
     console.log("Deletion cancelled.");
     return process.exit(0);
   }
@@ -275,27 +322,27 @@ const getId = async function() {
   return emailAddress;
 };
 
-
 const actionGuardMode = async function(name) {
   const key = `quests.${name}.mode.guard`;
   const currentValue = config.get(key) || false;
-  console.log(`Guard mode for "${name}" is currently ${currentValue ? "on" : "off"}`);
+  console.log(
+    `Guard mode for "${name}" is currently ${currentValue ? "on" : "off"}`
+  );
   const menuChoice = await ui.select("Please choose", {
-    "Turn it OFF (Check for regressions, show results, report metrics.  This is the default.)":
-      false,
-    "Turn it ON (Check for regressions but don't show results or report metrics)":
-      true,
+    "Turn guard mode OFF (Check for regressions, show results, report metrics.  This is the default.)": false,
+    "Turn guard mode ON (Check for regressions but don't show results or report metrics)": true
   });
   config.set(key, menuChoice);
-  console.log(`Guard mode for "${name}" is now set to ${menuChoice ? "on" : "off"}`);
-}
-
+  console.log(
+    `Guard mode for "${name}" is now set to ${menuChoice ? "on" : "off"}`
+  );
+};
 
 /*
 
 While `diffjam check` by default looks for regressions, when a user signs up for
 hustle-mode, it will additionally check that the current codebase has improved in
-a quest beyond the current stat.
+a policy beyond the current stat.
 
 */
 const actionHustleMode = async function(name) {
@@ -305,7 +352,7 @@ const actionHustleMode = async function(name) {
       "warn5",
     "warn for 15 seconds (diffjam check will pause for 15 seconds to warn you when you don't make progress and then it will continue)":
       "warn15",
-    "prompt (diffjam check will interactively ask you to confirm if it's okay that you didn't make progress on a quest)":
+    "prompt (diffjam check will interactively ask you to confirm if it's okay that you didn't make progress on a policy)":
       "prompt",
     "fail (diffjam check will simply fail if you don't make progress)": "fail",
     "none (stop hustle-mode)": "none"
@@ -357,24 +404,31 @@ const actionHustleMode = async function(name) {
   }
 };
 
-const actionModifyQuest = async function(name) {
+const actionPolicyModify = async function(name) {
   const quest = config.get(`quests.${name}`);
 
   if (!quest) {
-    console.error("There was no quest named: ", name);
+    console.error("There was no policy named: ", name);
     return process.exit(1);
   }
 
   const modifyMenuChoice = await ui.select("Choose an action", {
-    "delete": { type: "delete_quest" },
-    "subscribe to hustle-mode (ensure that you're always making improvements)": { type: "mode_hustle" },
-    "set to guard mode (hide all output unless there are regressions)": { type: "mode_guard" },
-    "exit": { type: "exit" },
+    delete: { type: "delete_quest" },
+    "edit description": { type: "quest_description_edit" },
+    "subscribe to hustle-mode (ensure that you're always making improvements)": {
+      type: "mode_hustle"
+    },
+    "set to guard mode (hide all output unless there are regressions)": {
+      type: "mode_guard"
+    },
+    exit: { type: "exit" }
   });
 
   switch (modifyMenuChoice.type) {
+    case "quest_description_edit":
+      return actionPolicyDescriptionEdit(name);
     case "delete_quest":
-      return actionDeleteQuest(name);
+      return actionPolicyDelete(name);
     case "mode_hustle":
       return actionHustleMode(name);
     case "mode_guard":
@@ -386,33 +440,46 @@ const actionModifyQuest = async function(name) {
   }
 };
 
-// create a quest
-const actionNewQuest = async function(name, command) {
+// create a policy
+const actionNewPolicy = async function(name, command) {
   ensureConfig();
 
   if (!name) {
-    name = await ui.textInput("Enter a name for this quest: ");
+    name = await ui.textInput("Enter a name for this policy: ");
   }
 
   if (!command) {
-    command = await ui.textInput("Enter the command that will return your metric: ");
+    command = await ui.textInput(
+      "Enter the command that will return your metric: "
+    );
   }
 
   const quest = {
     command
   };
 
-  const matches = await countQuest(quest);
+  quest.description = await ui.textInput(
+    "Give a description for this policy: "
+  );
 
-  const trendDirection = await ui.select(`Do you want to minimize or maximize for this quest?`, {
-    minimize: "minimize",
-    maximize: "maximize",
-  });
+  const matches = await countPolicy(quest);
+
+  const trendDirection = await ui.select(
+    `Do you want to minimize or maximize for this policy?`,
+    {
+      minimize: "minimize",
+      maximize: "maximize"
+    }
+  );
 
   quest.minimize = trendDirection === "minimize";
   quest.baseline = matches;
 
-  if (await ui.confirm(`There are currently ${matches} matches for that configuration.  Save it?`)){
+  if (
+    await ui.confirm(
+      `There are currently ${matches} matches for that configuration.  Save it?`
+    )
+  ) {
     config.set(`quests.${name}`, quest);
     console.log("Saved!");
   } else {
@@ -420,7 +487,19 @@ const actionNewQuest = async function(name, command) {
   }
 };
 
-const actionCinch = async (questName) => {
+const logBreachError = async breach => {
+  console.error(
+    "\n",
+    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
+      breach.quest.baseline
+    } or ${breach.quest.minimize ? "less" : "more"})`
+  );
+  if (breach.quest.description) {
+    console.error("", breach.quest.description, "\n\n");
+  }
+};
+
+const actionCinch = async questName => {
   ensureConfig();
 
   const results = await getResults();
@@ -444,13 +523,9 @@ const actionCinch = async (questName) => {
   */
   if (results.breaches.length > 0) {
     const [firstBreach] = results.breaches;
-    console.error("Cannot cinch a metric that doesn't even meet the baseline");
+    logBreachError(firstBreach);
     console.error(
-      `${RED_X} ${chalk.red.bold(firstBreach.name)}: ${
-        firstBreach.result
-      } (expected ${firstBreach.quest.baseline} or ${
-        firstBreach.quest.minimize ? "less" : "more"
-      })`
+      "Cannot cinch a metric that doesn't even meet the baseline. \n"
     );
     process.exitCode = 1;
     return;
@@ -483,14 +558,14 @@ const run = async function(action, param1, flags) {
   switch (action) {
     case "init":
       return actionInit(); // create the config
-    case "quest":
-      return actionNewQuest(); // add a quest to the config
+    case "policy":
+      return actionNewPolicy(); // add a policy to the config
     case "modify":
-      return actionModifyQuest(param1); // add a quest to the config
+      return actionPolicyModify(param1); // add a policy to the config
     case "count":
-      return actionCount({}, flags); // run the quest counter
+      return actionCount(flags); // run the policy counter
     case "check":
-      return actionCount({ check: true }); // count + fail if warranted
+      return actionCheck(); // count + fail if warranted
     case "cinch":
       return actionCinch(param1); // count + fail if warranted
     default:
