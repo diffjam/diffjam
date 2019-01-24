@@ -46,6 +46,17 @@ const getConfig = async (file = "./diffjam.json") => {
   }
 };
 
+const logBreachError = async breach => {
+  console.error(
+    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
+      breach.quest.baseline
+    } or ${breach.quest.minimize ? "less" : "more"})`
+  );
+  if (breach.quest.description) {
+    console.error("", breach.quest.description);
+  }
+};
+
 async function postMetrics(apiKey, successes, breaches) {
   let response;
   const body = {
@@ -147,11 +158,23 @@ const getResults = async () => {
           });
         }
       }
-      if (failed || !questIsInGuardMode(quest)) {
-        logQuestResult(name, quest, result, Date.now() - questStart.getTime());
+      if (failed) {
+        // policy failed
+        logBreachError(_.last(breaches));
+      } else {
+        // policy is okay
+        if (!questIsInGuardMode(quest)) {
+          logQuestResult(
+            name,
+            quest,
+            result,
+            Date.now() - questStart.getTime()
+          );
+        }
       }
     })
   );
+  console.log("\n");
   return {
     successes,
     breaches
@@ -168,7 +191,6 @@ const actionCheck = async function() {
   const { breaches, successes } = results;
 
   if (breaches.length) {
-    breaches.map(logBreachError);
     logCheckFailedError();
     process.exitCode = 1;
   }
@@ -181,7 +203,6 @@ const actionCount = async function(flags = {}) {
   const { breaches, successes } = results;
 
   if (breaches.length) {
-    breaches.map(logBreachError);
     logCheckFailedError();
   }
 
@@ -487,18 +508,6 @@ const actionNewPolicy = async function(name, command) {
   }
 };
 
-const logBreachError = async breach => {
-  console.error(
-    "\n",
-    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
-      breach.quest.baseline
-    } or ${breach.quest.minimize ? "less" : "more"})`
-  );
-  if (breach.quest.description) {
-    console.error("", breach.quest.description, "\n\n");
-  }
-};
-
 const actionCinch = async questName => {
   ensureConfig();
 
@@ -522,10 +531,8 @@ const actionCinch = async questName => {
   const hadABreach = failedBaseline(quest, count);
   */
   if (results.breaches.length > 0) {
-    const [firstBreach] = results.breaches;
-    logBreachError(firstBreach);
     console.error(
-      "Cannot cinch a metric that doesn't even meet the baseline. \n"
+      chalk.bold("Cannot cinch a metric that doesn't even meet the baseline. \n")
     );
     process.exitCode = 1;
     return;
