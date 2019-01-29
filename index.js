@@ -46,6 +46,10 @@ const getConfig = async (file = "./diffjam.json") => {
   }
 };
 
+const savePolicy = (name, policy) => {
+  config.set(`quests.${name}`, policy);
+}
+
 const logBreachError = async breach => {
   console.error(
     `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
@@ -88,16 +92,16 @@ async function countPolicy(policy) {
   } catch (ex) {
     console.error("error running shell command ", ex);
     console.error("policy: ", policy);
-    throw new Error("some error getting matches for countQuest");
+    throw new Error("some error getting matches for countPolicy");
   }
   if (res2.code !== 0) {
-    throw new Error("some error getting matches for countQuest");
+    throw new Error("some error getting matches for countPolicy");
   }
   const matches = Number.parseInt(res2.stdout, 10);
   return matches;
 }
 
-const logQuestResult = (name, policy, result, duration) => {
+const logPolicyResult = (name, policy, result, duration) => {
   if (failedBaseline(policy, result)) {
     return console.error(
       `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${
@@ -120,41 +124,41 @@ function failedBaseline(policy, result) {
   return false;
 }
 
-const getQuestNames = () => {
-  const quests = config.get("quests");
-  return Object.keys(quests);
+const getPolicyNames = () => {
+  const policies = config.get("quests");
+  return Object.keys(policies);
 };
 
-const questIsInGuardMode = policy => {
+const policyIsInGuardMode = policy => {
   return policy.mode && policy.mode.guard;
 };
 
 const getResults = async () => {
-  const quests = config.get("quests");
+  const policies = config.get("quests");
   const successes = [];
   const breaches = [];
 
   await Promise.all(
-    Object.keys(quests).map(async name => {
-      const quest = quests[name];
-      const questStart = new Date();
-      const result = await countPolicy(quest);
+    Object.keys(policies).map(async name => {
+      const policy = policies[name];
+      const policyStart = new Date();
+      const result = await countPolicy(policy);
       let failed = false;
-      if (failedBaseline(quest, result)) {
+      if (failedBaseline(policy, result)) {
         failed = true;
         breaches.push({
           name,
-          quest,
+          quest: policy,
           result,
-          duration: Date.now() - questStart.getTime()
+          duration: Date.now() - policyStart.getTime()
         });
       } else {
-        if (!questIsInGuardMode(quest)) {
+        if (!policyIsInGuardMode(policy)) {
           successes.push({
             name,
-            quest,
+            quest: policy,
             result,
-            duration: Date.now() - questStart.getTime()
+            duration: Date.now() - policyStart.getTime()
           });
         }
       }
@@ -163,12 +167,12 @@ const getResults = async () => {
         logBreachError(_.last(breaches));
       } else {
         // policy is okay
-        if (!questIsInGuardMode(quest)) {
-          logQuestResult(
+        if (!policyIsInGuardMode(policy)) {
+          logPolicyResult(
             name,
-            quest,
+            policy,
             result,
-            Date.now() - questStart.getTime()
+            Date.now() - policyStart.getTime()
           );
         }
       }
@@ -245,11 +249,11 @@ const actionInit = async function() {
 const actionMainMenu = async function(name, command) {
   console.log(logo);
   ensureConfig();
-  const questNames = getQuestNames();
+  const policyNames = getPolicyNames();
   const editChoicesMap = {};
-  questNames.forEach(name => {
+  policyNames.forEach(name => {
     editChoicesMap[`edit "${name}"`] = {
-      type: "edit_quest",
+      type: "edit_policy",
       name
     };
   });
@@ -258,12 +262,12 @@ const actionMainMenu = async function(name, command) {
     "Choose an action",
     _.extend(
       {
-        "new policy": { type: "new_quest" },
+        "new policy": { type: "new_policy" },
         "cinch - record the latest counts to the local config": {
           type: "cinch"
         },
-        "count - count the current state of all quests": { type: "count" },
-        "check - check that the current counts for the quests are not worse than the recorded counts": {
+        "count - count the current state of all policies": { type: "count" },
+        "check - check that the current counts for the policies are not worse than the recorded counts": {
           type: "check"
         }
       },
@@ -272,7 +276,7 @@ const actionMainMenu = async function(name, command) {
   );
 
   switch (mainMenuChoice.type) {
-    case "new_quest":
+    case "new_policy":
       return actionNewPolicy();
     case "cinch":
       return actionCinch();
@@ -280,7 +284,7 @@ const actionMainMenu = async function(name, command) {
       return actionCount();
     case "check":
       return actionCheck(); // count + fail if warranted
-    case "edit_quest":
+    case "edit_policy":
       return actionPolicyModify(mainMenuChoice.name);
     default:
       throw new Error(`unknown choice: ${mainMenuChoice}`);
@@ -289,29 +293,52 @@ const actionMainMenu = async function(name, command) {
 
 const actionPolicyDescriptionEdit = async function(name) {
   const key = `quests.${name}`;
-  const quest = config.get(key);
+  const policy = config.get(key);
 
-  if (!quest) {
+  if (!policy) {
     console.error("There was no policy named: ", name);
     return process.exit(1);
   }
 
-  if (!quest.description) {
+  if (!policy.description) {
     console.log("There currently is no description");
   } else {
     console.log("The current description is: ");
-    console.log(quest.description);
+    console.log(policy.description);
   }
 
-  quest.description = await ui.textInput("Give a new description: ");
+  policy.description = await ui.textInput("Give a new description: ");
 
-  config.set(key, quest);
+  savePolicy(name, policy);
+};
+
+const actionPolicyBaselineFix = async function(name) {
+  const policy = config.get(`quests.${name}`);
+
+  if (!policy) {
+    console.error("There was no policy named: ", name);
+    return process.exit(1);
+  }
+
+  const count = await countPolicy(policy);
+  const hadABreach = failedBaseline(policy, count);
+
+  if (!hadABreach) {
+    console.error(`The baseline for that policy doesn't need to be fixed.  The count is ${count} and the baseline is ${policy.baseline}`);
+    return process.exit(1);
+  }
+
+  const oldBaseline = policy.baseline;
+
+  config.set(`quests.${name}.baseline`, count);
+  console.log(`The baseline for that policy was changed from ${oldBaseline} to ${count}`);
+
 };
 
 const actionPolicyDelete = async function(name) {
-  const quest = config.get(`quests.${name}`);
+  const policy = config.get(`quests.${name}`);
 
-  if (!quest) {
+  if (!policy) {
     console.error("There was no policy named: ", name);
     return process.exit(1);
   }
@@ -426,16 +453,17 @@ const actionHustleMode = async function(name) {
 };
 
 const actionPolicyModify = async function(name) {
-  const quest = config.get(`quests.${name}`);
+  const policy = config.get(`quests.${name}`);
 
-  if (!quest) {
+  if (!policy) {
     console.error("There was no policy named: ", name);
     return process.exit(1);
   }
 
   const modifyMenuChoice = await ui.select("Choose an action", {
-    delete: { type: "delete_quest" },
-    "edit description": { type: "quest_description_edit" },
+    delete: { type: "delete_policy" },
+    "edit description": { type: "policy_description_edit" },
+    "fix baseline": { type: "policy_baseline_fix" },
     "subscribe to hustle-mode (ensure that you're always making improvements)": {
       type: "mode_hustle"
     },
@@ -446,10 +474,12 @@ const actionPolicyModify = async function(name) {
   });
 
   switch (modifyMenuChoice.type) {
-    case "quest_description_edit":
+    case "policy_description_edit":
       return actionPolicyDescriptionEdit(name);
-    case "delete_quest":
+    case "delete_policy":
       return actionPolicyDelete(name);
+    case "policy_baseline_fix":
+      return actionPolicyBaselineFix(name);
     case "mode_hustle":
       return actionHustleMode(name);
     case "mode_guard":
@@ -475,15 +505,15 @@ const actionNewPolicy = async function(name, command) {
     );
   }
 
-  const quest = {
+  const policy = {
     command
   };
 
-  quest.description = await ui.textInput(
+  policy.description = await ui.textInput(
     "Give a description for this policy: "
   );
 
-  const matches = await countPolicy(quest);
+  const matches = await countPolicy(policy);
 
   const trendDirection = await ui.select(
     `Do you want to minimize or maximize for this policy?`,
@@ -493,34 +523,34 @@ const actionNewPolicy = async function(name, command) {
     }
   );
 
-  quest.minimize = trendDirection === "minimize";
-  quest.baseline = matches;
+  policy.minimize = trendDirection === "minimize";
+  policy.baseline = matches;
 
   if (
     await ui.confirm(
       `There are currently ${matches} matches for that configuration.  Save it?`
     )
   ) {
-    config.set(`quests.${name}`, quest);
+    savePolicy(name, policy);
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");
   }
 };
 
-const actionCinch = async questName => {
+const actionCinch = async () => {
   ensureConfig();
 
   const results = await getResults();
 
   /*
-  const quests = config.get("quests");
-  const quest = quests[questName];
+  const policies = config.get("quests");
+  const quest = policies[questName];
 
 
   if (!quest) {
     console.error("No quest by that name exists.  Possible quest names: ");
-    for (const name in quests) {
+    for (const name in policies) {
       console.error(`* ${name}`);
     }
     process.exitCode = 1;
