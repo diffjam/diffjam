@@ -230,7 +230,8 @@ const ensureConfig = function() {
   if (!config) {
     config = new Conf({
       configName: "diffjam",
-      cwd: "."
+      cwd: ".",
+      serialize: (value) => JSON.stringify(value, null, 2),
     });
     config.set("quests", {});
   }
