@@ -11,12 +11,18 @@ const pshell = require("pshell");
 const fileExists = require("mz/fs").exists;
 const Conf = require("conf");
 const ui = require("./ui");
+const fs = require("fs");
+let packageJson = JSON.parse(
+  fs.readFileSync(`${__dirname}/package.json`).toString()
+);
+const clientVersion = packageJson.version;
 
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
 const logo =
-  "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/                 ";
+  "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/   version: " +
+  clientVersion;
 
 // TODO verify only when user is me
 
@@ -26,6 +32,8 @@ const logo =
 // conf for config? https://github.com/sindresorhus/conf
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
 // asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
+
+// TODO some old diffjam.jsons will use the field "quests" instead of "policies".  1.0.0 and after use "policies"
 
 process.on("unhandledRejection", err => {
   console.error("err: ", err);
@@ -47,8 +55,8 @@ const getConfig = async (file = "./diffjam.json") => {
 };
 
 const savePolicy = (name, policy) => {
-  config.set(`quests.${name}`, policy);
-}
+  config.set(`policies.${name}`, policy);
+};
 
 const logBreachError = async breach => {
   console.error(
@@ -61,19 +69,18 @@ const logBreachError = async breach => {
   }
 };
 
-async function postMetrics(apiKey, successes, breaches) {
+async function postMetrics(apiKey, config, results) {
   let response;
   const body = {
-    successes,
-    breaches
+    apiKey,
+    clientVersion,
+    config,
+    results: {}
   };
   try {
-    response = await axios.post(
-      `https://gitratchet.com/api/record?api_key=${apiKey}`,
-      {
-        body
-      }
-    );
+    response = await axios.post(`https://diffjam.com/api/snapshot`, {
+      body
+    });
     if (response.status !== 200) {
       throw new Error(`Non-200 response from diffjam.com: ${response.status}`);
     }
@@ -125,7 +132,7 @@ function failedBaseline(policy, result) {
 }
 
 const getPolicyNames = () => {
-  const policies = config.get("quests");
+  const policies = config.get("policies") || config.get("quests");
   return Object.keys(policies);
 };
 
@@ -134,9 +141,10 @@ const policyIsInGuardMode = policy => {
 };
 
 const getResults = async () => {
-  const policies = config.get("quests");
-  const successes = [];
+  const policies = config.get("policies") || config.get("quests");
+  const results = {};
   const breaches = [];
+  const successes = [];
 
   await Promise.all(
     Object.keys(policies).map(async name => {
@@ -144,6 +152,7 @@ const getResults = async () => {
       const policyStart = new Date();
       const result = await countPolicy(policy);
       let failed = false;
+      const duration = Date.now() - policyStart.getTime();
       if (failedBaseline(policy, result)) {
         failed = true;
         breaches.push({
@@ -162,6 +171,10 @@ const getResults = async () => {
           });
         }
       }
+      results[name] = {
+        duration,
+        measurement: result
+      };
       if (failed) {
         // policy failed
         logBreachError(_.last(breaches));
@@ -180,6 +193,7 @@ const getResults = async () => {
   );
   console.log("\n");
   return {
+    results,
     successes,
     breaches
   };
@@ -203,24 +217,29 @@ const actionCheck = async function() {
 
 const actionCount = async function(flags = {}) {
   const start = new Date();
-  const results = await getResults();
-  const { breaches, successes } = results;
+  const { breaches, successes, results } = await getResults();
 
   if (breaches.length) {
     logCheckFailedError();
   }
 
   if (flags.record) {
+    const configJson = JSON.parse(fs.readFileSync(`./diffjam.json`).toString());
     console.log("sending metrics to server...");
     console.log("successes: ", successes);
     console.log("breaches: ", breaches);
     const apiKey = process.env.DIFFJAM_API_KEY;
     if (!apiKey) {
-      console.error("Missing api key!  Could not post metrics");
+      console.error("Missing api key!  Could not post metrics.");
+      console.error(
+        "You must have an api key in an environment variable named DIFFJAM_API_KEY"
+      );
       process.exitCode = 1;
       return;
     }
-    await postMetrics(apiKey, successes, breaches);
+    console.log("apiKey, config, results: ", apiKey, configJson, results);
+
+    await postMetrics(apiKey, configJson, results);
   }
 
   console.log(`Done in ${Date.now() - start.getTime()} ms.`);
@@ -231,9 +250,9 @@ const ensureConfig = function() {
     config = new Conf({
       configName: "diffjam",
       cwd: ".",
-      serialize: (value) => JSON.stringify(value, null, 2),
+      serialize: value => JSON.stringify(value, null, 2)
     });
-    config.set("quests", {});
+    config.set("policies", {});
   }
 };
 
@@ -248,7 +267,7 @@ const actionInit = async function() {
 };
 
 const actionMainMenu = async function(name, command) {
-  console.log(logo);
+  console.log(logo + "\n");
   ensureConfig();
   const policyNames = getPolicyNames();
   const editChoicesMap = {};
@@ -293,8 +312,8 @@ const actionMainMenu = async function(name, command) {
 };
 
 const actionPolicyDescriptionEdit = async function(name) {
-  const key = `quests.${name}`;
-  const policy = config.get(key);
+  const key = `policies.${name}`;
+  const policy = config.get(key) || config.get(`quests.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -314,7 +333,7 @@ const actionPolicyDescriptionEdit = async function(name) {
 };
 
 const actionPolicyBaselineFix = async function(name) {
-  const policy = config.get(`quests.${name}`);
+  const policy = config.get(`policies.${name}`) || config.get(`quests.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -325,19 +344,22 @@ const actionPolicyBaselineFix = async function(name) {
   const hadABreach = failedBaseline(policy, count);
 
   if (!hadABreach) {
-    console.error(`The baseline for that policy doesn't need to be fixed.  The count is ${count} and the baseline is ${policy.baseline}`);
+    console.error(
+      `The baseline for that policy doesn't need to be fixed.  The count is ${count} and the baseline is ${policy.baseline}`
+    );
     return process.exit(1);
   }
 
   const oldBaseline = policy.baseline;
 
-  config.set(`quests.${name}.baseline`, count);
-  console.log(`The baseline for that policy was changed from ${oldBaseline} to ${count}`);
-
+  config.set(`policies.${name}.baseline`, count);
+  console.log(
+    `The baseline for that policy was changed from ${oldBaseline} to ${count}`
+  );
 };
 
 const actionPolicyDelete = async function(name) {
-  const policy = config.get(`quests.${name}`);
+  const policy = config.get(`policies.${name}`) || config.get(`quests.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -353,7 +375,7 @@ const actionPolicyDelete = async function(name) {
     return process.exit(0);
   }
 
-  config.delete(`quests.${name}`);
+  config.delete(`policies.${name}`);
 };
 
 const getId = async function() {
@@ -372,8 +394,9 @@ const getId = async function() {
 };
 
 const actionGuardMode = async function(name) {
-  const key = `quests.${name}.mode.guard`;
-  const currentValue = config.get(key) || false;
+  const key = `policies.${name}.mode.guard`;
+  const questsKey = `quests.${name}.mode.guard`;
+  const currentValue = config.get(key) || config.get(questsKey) || false;
   console.log(
     `Guard mode for "${name}" is currently ${currentValue ? "on" : "off"}`
   );
@@ -410,8 +433,10 @@ const actionHustleMode = async function(name) {
   console.log("hustle mode difficulty level: ", hustleMenuChoice);
   console.log("emailAddress: ", emailAddress);
 
-  const subscriptionsKey = `quests.${name}.mode.hustle.subscriptions`;
-  let subscriptions = config.get(subscriptionsKey) || [];
+  const subscriptionsKey = `policies.${name}.mode.hustle.subscriptions`;
+  const questsSubscriptionsKey = `policies.${name}.mode.hustle.subscriptions`;
+  let subscriptions =
+    config.get(subscriptionsKey) || config.get(questsSubscriptionsKey) || [];
   console.log("subscriptions from file is: ", subscriptions);
 
   const newSubscription = {
@@ -454,7 +479,7 @@ const actionHustleMode = async function(name) {
 };
 
 const actionPolicyModify = async function(name) {
-  const policy = config.get(`quests.${name}`);
+  const policy = config.get(`policies.${name}`) || config.get(`quests.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -542,10 +567,10 @@ const actionNewPolicy = async function(name, command) {
 const actionCinch = async () => {
   ensureConfig();
 
-  const results = await getResults();
+  const { breaches, successes } = await getResults();
 
   /*
-  const policies = config.get("quests");
+  const policies = config.get("policies");
   const quest = policies[questName];
 
 
@@ -561,15 +586,17 @@ const actionCinch = async () => {
   const count = await countQuest(quest);
   const hadABreach = failedBaseline(quest, count);
   */
-  if (results.breaches.length > 0) {
+  if (breaches.length > 0) {
     console.error(
-      chalk.bold("Cannot cinch a metric that doesn't even meet the baseline. \n")
+      chalk.bold(
+        "Cannot cinch a metric that doesn't even meet the baseline. \n"
+      )
     );
     process.exitCode = 1;
     return;
   }
 
-  for (const result of results.successes) {
+  for (const result of successes) {
     let exceeds =
       result.quest.minimize && result.result < result.quest.baseline;
     exceeds =
@@ -577,7 +604,7 @@ const actionCinch = async () => {
       (result.quest.maximize && result.result > result.quest.baseline);
 
     if (exceeds) {
-      config.set(`quests.${result.name}.baseline`, result.result);
+      config.set(`policies.${result.name}.baseline`, result.result);
       console.log(
         `${GREEN_CHECK} ${chalk.bold(result.name)} was just cinched from ${
           result.quest.baseline
