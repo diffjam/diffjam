@@ -86,6 +86,10 @@ async function postMetrics(apiKey, config, results) {
     }
   } catch (ex) {
     console.log("There was some error hitting diffjam.com: ", ex);
+    console.log("ex.request.data: ", ex.request.data);
+    console.log("ex.response.data: ", ex.response.data);
+
+
   }
 }
 
