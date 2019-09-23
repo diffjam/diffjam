@@ -78,9 +78,7 @@ async function postMetrics(apiKey, config, results) {
     results: {}
   };
   try {
-    response = await axios.post(`https://diffjam.com/api/snapshot`, {
-      body
-    });
+    response = await axios.post(`https://diffjam.com/api/snapshot`, body);
     if (response.status !== 200) {
       throw new Error(`Non-200 response from diffjam.com: ${response.status}`);
     }
