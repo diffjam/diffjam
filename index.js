@@ -69,13 +69,14 @@ const logBreachError = async breach => {
   }
 };
 
-async function postMetrics(apiKey, config, results) {
+async function postMetrics(apiKey, config, results, tags) {
   let response;
   const body = {
     apiKey,
     clientVersion,
     config,
-    results: {}
+    results,
+    tags,
   };
   try {
     response = await axios.post(`https://diffjam.com/api/snapshot`, body);
@@ -226,7 +227,16 @@ const actionCount = async function(flags = {}) {
   }
 
   if (flags.record) {
+    await promptForTags();
     const configJson = JSON.parse(fs.readFileSync(`./diffjam.json`).toString());
+    if (!configJson.tags || !Array.isArray(configJson.tags) || configJson.tags.length === 0) {
+      console.error("Missing tags!  Could not post metrics.");
+      console.error(
+        "You must have one or more tags for these metrics."
+      );
+      process.exitCode = 1;
+
+    }
     console.log("sending metrics to server...");
     console.log("successes: ", successes);
     console.log("breaches: ", breaches);
@@ -255,6 +265,7 @@ const ensureConfig = function() {
       serialize: value => JSON.stringify(value, null, 2)
     });
     config.set("policies", {});
+    config.set("tags", []);
   }
 };
 
@@ -565,6 +576,15 @@ const actionNewPolicy = async function(name, command) {
     console.log("Cancelled save.");
   }
 };
+
+const promptForTags = async () => {
+  const tags = config.get("tags") || [];
+  if (tags.length === 0) {
+    const tagInput = await ui.textInput("Enter the name of this codebase: ");
+    tags.push(`codebase:${tagInput}`);
+    config.set("tags", tags);
+  }
+}
 
 const actionCinch = async () => {
   ensureConfig();
