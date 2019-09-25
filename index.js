@@ -80,8 +80,8 @@ async function postMetrics(apiKey, config, results, tags) {
   };
   try {
     response = await axios.post(`https://diffjam.com/api/snapshot`, body);
-    if (response.status !== 200) {
-      throw new Error(`Non-200 response from diffjam.com: ${response.status}`);
+    if (response.status < 200 || response.status > 299 ) {
+      throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
     }
   } catch (ex) {
     console.log("There was some error hitting diffjam.com: ", ex);
