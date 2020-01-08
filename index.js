@@ -20,9 +20,21 @@ const clientVersion = packageJson.version;
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
-const logo =
-  "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/   version: " +
-  clientVersion;
+// const logo =
+//   "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/   version: " +
+//   clientVersion;
+const logoBrown = chalk.rgb(74, 53, 47);
+const logoYellow = chalk.rgb(241, 157, 56);
+
+const logo = `
+ ${logoBrown.bold("_____")}    ${logoYellow("_")}    ${logoBrown.bold("__    __")}        ${logoBrown("_")}
+${logoBrown.bold("|  __ \\")}  ${logoYellow("(_)")}  ${logoBrown.bold("/ _|  / _|")}      ${logoBrown("| |")}
+${logoBrown.bold("| |  | |  _  | |_  | |_")}       ${logoBrown("| |   __ _   _ __ ___")}
+${logoBrown.bold("| |  | | | | |  _| |  _|")}  ${logoBrown("_   | |  / _\` | | '_ \` _ \\")}
+${logoBrown.bold("| |__| | | | | |   | |")}   ${logoBrown("| |__| | | (_| | | | | | | |")}
+${logoBrown.bold("|_____/  |_| |_|   |_|")}    ${logoBrown("\\____/   \\__,_| |_| |_| |_|")}
+                          ${logoBrown("version: ")} ${logoYellow(clientVersion)}
+`;
 
 // TODO verify only when user is me
 
@@ -65,7 +77,7 @@ const logBreachError = async breach => {
     } or ${breach.quest.minimize ? "less" : "more"})`
   );
   if (breach.quest.description) {
-    console.error("", breach.quest.description);
+    console.error("", chalk.magenta(breach.quest.description));
   }
 };
 
@@ -76,19 +88,26 @@ async function postMetrics(apiKey, config, results, tags) {
     clientVersion,
     config,
     results,
-    tags,
+    tags
   };
   try {
     response = await axios.post(`https://diffjam.com/api/snapshot`, body);
-    if (response.status < 200 || response.status > 299 ) {
+    // TODO: Check if this is happening at all. Axios is failing if the status is not 200.
+    if (response.status < 200 || response.status > 299) {
       throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
     }
   } catch (ex) {
-    console.log("There was some error hitting diffjam.com: ", ex);
-    console.log("ex.request.data: ", ex.request.data);
-    console.log("ex.response.data: ", ex.response.data);
-
-
+    if (ex.response.status === 400) {
+      // This is an expected error. Something is wrong (probably with the configuration);
+      console.error(
+        chalk.red.bold("The error reported an issue with your configuration")
+      );
+      console.error(chalk.red(JSON.stringify(ex.response.data)));
+    } else {
+      console.log("There was some error hitting diffjam.com: ", ex);
+      console.log("ex.request.data: ", ex.request.data);
+      console.log("ex.response.data: ", ex.response.data);
+    }
   }
 }
 
@@ -221,40 +240,49 @@ const actionCheck = async function() {
 const actionCount = async function(flags = {}) {
   const start = new Date();
   const { breaches, successes, results } = await getResults();
+  const verbose = !!flags.verbose;
 
   if (breaches.length) {
     logCheckFailedError();
   }
 
+  // TODO make it fail!
   if (flags.record) {
     await promptForTags();
     const configJson = JSON.parse(fs.readFileSync(`./diffjam.json`).toString());
-    if (!configJson.tags || !Array.isArray(configJson.tags) || configJson.tags.length === 0) {
-      console.error("Missing tags!  Could not post metrics.");
+    if (
+      !configJson.tags ||
+      !Array.isArray(configJson.tags) ||
+      configJson.tags.length === 0
+    ) {
+      console.error(chalk.red("Missing tags!  Could not post metrics."));
       console.error(
-        "You must have one or more tags for these metrics."
+        chalk.red("You must have one or more tags for these metrics.")
       );
       process.exitCode = 1;
-
     }
-    console.log("sending metrics to server...");
-    console.log("successes: ", successes);
-    console.log("breaches: ", breaches);
+    console.log(chalk.yellow("sending metrics to server..."));
+    verbose &&
+      console.log(chalk.cyan(`successes: ${JSON.stringify(successes)}`));
+    verbose && console.log(chalk.cyan(`breaches: ${JSON.stringify(breaches)}`));
     const apiKey = process.env.DIFFJAM_API_KEY;
     if (!apiKey) {
-      console.error("Missing api key!  Could not post metrics.");
+      console.error(chalk.red("Missing api key!  Could not post metrics."));
       console.error(
-        "You must have an api key in an environment variable named DIFFJAM_API_KEY"
+        chalk.red(
+          "You must have an api key in an environment variable named DIFFJAM_API_KEY"
+        )
       );
       process.exitCode = 1;
       return;
     }
-    console.log("apiKey, config, results: ", apiKey, configJson, results);
+    verbose &&
+      console.log("apiKey, config, results: ", apiKey, configJson, results);
 
     await postMetrics(apiKey, configJson, results);
   }
 
-  console.log(`Done in ${Date.now() - start.getTime()} ms.`);
+  console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
 };
 
 const ensureConfig = function() {
@@ -584,7 +612,7 @@ const promptForTags = async () => {
     tags.push(`codebase:${tagInput}`);
     config.set("tags", tags);
   }
-}
+};
 
 const actionCinch = async () => {
   ensureConfig();

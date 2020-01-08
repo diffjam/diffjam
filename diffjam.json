@@ -1,0 +1,13 @@
+{
+	"policies": {
+		"No TODOs": {
+			"command": "git grep TODO | wc -l",
+			"description": "Don't add TODOS. DO IT NOW!",
+			"minimize": true,
+			"baseline": 9
+		}
+	},
+	"tags": [
+		"codebase:diffjam-cli"
+	]
+}
