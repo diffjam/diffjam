@@ -1,17 +1,20 @@
 # diffjam
 
-This utility is useful for creating policies that your
-codebase should adhere to and for checking commits to make sure they're
-adhering.
+This is a command-line utility for documenting, tracking, and discouraging bad patterns in your codebase.
 
-A policy is basically just any rule you want to enforce or pattern you want
+Diffjam allows you to create "policies" -- basically any rule you want to enforce or pattern you want
 to either maximize or minimize.  You tell diffjam how to count occurrences
 by providing your own counting shell commands like `git grep TODO | wc -l`,
-which looks for a counts instances of TODO in the codebase.
+which looks for and counts instances of TODO in the codebase.  It can also be used in a githook to prevent new cases of a bad pattern.
 
-Adherence to the policies isn't all-or-nothing.  Diffjam can track the number of
-violations and help you burn them down over time, or it can track the
+Adherence to the policies isn't all-or-nothing.  Diffjam can be used in builds to track the number of
+violations over time and help you burn them down, or it can track the
 number of good patterns and help you increase that number of over time.
+
+## Installing
+
+* `yarn install diffjam --dev`
+
 
 ## Running
 
