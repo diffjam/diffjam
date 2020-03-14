@@ -20,6 +20,8 @@ const clientVersion = packageJson.version;
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
+const envCi = require('env-ci');
+
 // const logo =
 //   "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/   version: " +
 //   clientVersion;
@@ -36,16 +38,9 @@ ${logoBrown.bold("|_____/  |_| |_|   |_|")}    ${logoBrown("\\____/   \\__,_| |_
                           ${logoBrown("version: ")} ${logoYellow(clientVersion)}
 `;
 
-// TODO verify only when user is me
-
-// should the diffjam.json contain the latest counts?  should it allow you to relock?
-// need the readme to show examples of how to count.  usually you don't want counts to include ignored files
-
 // conf for config? https://github.com/sindresorhus/conf
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
 // asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
-
-// TODO some old diffjam.jsons will use the field "quests" instead of "policies".  1.0.0 and after use "policies"
 
 process.on("unhandledRejection", err => {
   console.error("err: ", err);
@@ -80,6 +75,48 @@ const logBreachError = async breach => {
     console.error("", chalk.magenta(breach.quest.description));
   }
 };
+
+async function commentResults(apiKey, config, results, tags) {
+  const env = envCi();
+  console.log("env: ", env);
+  const {name, service, isCi, branch, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, slug, root} = env;
+  let response;
+  const body = {
+    apiKey,
+    clientVersion,
+    config,
+    results,
+    tags,
+    ci_env: {
+      name,
+      service,
+      branch,
+      commit,
+      isPr,
+      pr,
+      prBranch,
+      slug,
+    }
+  };
+  try {
+    response = await axios.post(`https://diffjam.com/api/ci`, body);
+    if (response.status < 200 || response.status > 299) {
+      throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
+    }
+  } catch (ex) {
+    if (ex.response.status === 400) {
+      // This is an expected error. Something is wrong (probably with the configuration);
+      console.error(
+        chalk.red.bold("The error reported an issue with your configuration")
+      );
+      console.error(chalk.red(JSON.stringify(ex.response.data)));
+    } else {
+      console.log("There was some error hitting diffjam.com: ", ex);
+      console.log("ex.request.data: ", ex.request.data);
+      console.log("ex.response.data: ", ex.response.data);
+    }
+  }
+}
 
 async function postMetrics(apiKey, config, results, tags) {
   let response;
@@ -154,7 +191,7 @@ function failedBaseline(policy, result) {
 }
 
 const getPolicyNames = () => {
-  const policies = config.get("policies") || config.get("quests");
+  const policies = config.get("policies");
   return Object.keys(policies);
 };
 
@@ -163,7 +200,7 @@ const policyIsInGuardMode = policy => {
 };
 
 const getResults = async () => {
-  const policies = config.get("policies") || config.get("quests");
+  const policies = config.get("policies");
   const results = {};
   const breaches = [];
   const successes = [];
@@ -173,15 +210,14 @@ const getResults = async () => {
       const policy = policies[name];
       const policyStart = new Date();
       const result = await countPolicy(policy);
-      let failed = false;
       const duration = Date.now() - policyStart.getTime();
       if (failedBaseline(policy, result)) {
-        failed = true;
         breaches.push({
           name,
           quest: policy,
           result,
-          duration: Date.now() - policyStart.getTime()
+          duration: Date.now() - policyStart.getTime(),
+          gaurdMode: policyIsInGuardMode(policy),
         });
       } else {
         if (!policyIsInGuardMode(policy)) {
@@ -189,7 +225,8 @@ const getResults = async () => {
             name,
             quest: policy,
             result,
-            duration: Date.now() - policyStart.getTime()
+            duration: Date.now() - policyStart.getTime(),
+            gaurdMode: policyIsInGuardMode(policy),
           });
         }
       }
@@ -197,22 +234,29 @@ const getResults = async () => {
         duration,
         measurement: result
       };
-      if (failed) {
-        // policy failed
-        logBreachError(_.last(breaches));
-      } else {
-        // policy is okay
-        if (!policyIsInGuardMode(policy)) {
-          logPolicyResult(
-            name,
-            policy,
-            result,
-            Date.now() - policyStart.getTime()
-          );
-        }
-      }
     })
   );
+  return {
+    results,
+    successes,
+    breaches
+  };
+};
+
+const logResults = async () => {
+
+  const {results, successes, breaches} = await getResults();
+
+  breaches.forEach((b) => {
+    logBreachError(b);
+  });
+
+  successes.forEach((s) => {
+    if (!s.gaurdMode) {
+      logPolicyResult(s.name, s.quest, s.result, s.duration);
+    }
+  });
+
   console.log("\n");
   return {
     results,
@@ -227,7 +271,7 @@ const logCheckFailedError = () => {
 
 const actionCheck = async function() {
   const start = new Date();
-  const results = await getResults();
+  const results = await logResults();
   const { breaches, successes } = results;
 
   if (breaches.length) {
@@ -237,53 +281,70 @@ const actionCheck = async function() {
   console.log(`Done in ${Date.now() - start.getTime()} ms.`);
 };
 
+
 const actionCount = async function(flags = {}) {
   const start = new Date();
-  const { breaches, successes, results } = await getResults();
+  const { breaches, successes, results } = await logResults();
   const verbose = !!flags.verbose;
 
   if (breaches.length) {
     logCheckFailedError();
   }
 
-  // TODO make it fail!
-  if (flags.record) {
-    await promptForTags();
-    const configJson = JSON.parse(fs.readFileSync(`./diffjam.json`).toString());
-    if (
-      !configJson.tags ||
-      !Array.isArray(configJson.tags) ||
-      configJson.tags.length === 0
-    ) {
-      console.error(chalk.red("Missing tags!  Could not post metrics."));
-      console.error(
-        chalk.red("You must have one or more tags for these metrics.")
-      );
-      process.exitCode = 1;
-    }
-    console.log(chalk.yellow("sending metrics to server..."));
-    verbose &&
-      console.log(chalk.cyan(`successes: ${JSON.stringify(successes)}`));
-    verbose && console.log(chalk.cyan(`breaches: ${JSON.stringify(breaches)}`));
-    const apiKey = process.env.DIFFJAM_API_KEY;
-    if (!apiKey) {
-      console.error(chalk.red("Missing api key!  Could not post metrics."));
-      console.error(
-        chalk.red(
-          "You must have an api key in an environment variable named DIFFJAM_API_KEY"
-        )
-      );
-      process.exitCode = 1;
-      return;
-    }
-    verbose &&
-      console.log("apiKey, config, results: ", apiKey, configJson, results);
+  console.log("flags: ", flags);
+  if (!flags.record && !flags.ci) {
 
+    console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
+    return;
+  }
+
+  await promptForTags();
+  const configJson = JSON.parse(fs.readFileSync(`./diffjam.json`).toString());
+  if (
+    !configJson.tags ||
+    !Array.isArray(configJson.tags) ||
+    configJson.tags.length === 0
+  ) {
+    console.error(chalk.red("Missing tags!  Could not post metrics."));
+    console.error(
+      chalk.red("You must have one or more tags for these metrics.")
+    );
+    process.exitCode = 1;
+  }
+  console.log(chalk.yellow("sending metrics to server..."));
+  verbose &&
+    console.log(chalk.cyan(`successes: ${JSON.stringify(successes)}`));
+  verbose && console.log(chalk.cyan(`breaches: ${JSON.stringify(breaches)}`));
+  const apiKey = process.env.DIFFJAM_API_KEY;
+  if (!apiKey) {
+    console.error(chalk.red("Missing api key!  Could not post metrics."));
+    console.error(
+      chalk.red(
+        "You must have an api key in an environment variable named DIFFJAM_API_KEY"
+      )
+    );
+    process.exitCode = 1;
+    return;
+  }
+  verbose && console.log("apiKey, config, results: ", apiKey, configJson, results);
+
+
+  if (flags.record) {
     await postMetrics(apiKey, configJson, results);
+  }
+
+  if (flags.ci) {
+    if (!envCi().isCi) {
+      throw new Error(`could not detect CI environment`);
+    }
+    await commentResults(apiKey, configJson, results);
   }
 
   console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
 };
+
+
+
 
 const ensureConfig = function() {
   if (!config) {
@@ -354,7 +415,7 @@ const actionMainMenu = async function(name, command) {
 
 const actionPolicyDescriptionEdit = async function(name) {
   const key = `policies.${name}`;
-  const policy = config.get(key) || config.get(`quests.${name}`);
+  const policy = config.get(key);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -374,7 +435,7 @@ const actionPolicyDescriptionEdit = async function(name) {
 };
 
 const actionPolicyBaselineFix = async function(name) {
-  const policy = config.get(`policies.${name}`) || config.get(`quests.${name}`);
+  const policy = config.get(`policies.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -400,7 +461,7 @@ const actionPolicyBaselineFix = async function(name) {
 };
 
 const actionPolicyDelete = async function(name) {
-  const policy = config.get(`policies.${name}`) || config.get(`quests.${name}`);
+  const policy = config.get(`policies.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -436,8 +497,7 @@ const getId = async function() {
 
 const actionGuardMode = async function(name) {
   const key = `policies.${name}.mode.guard`;
-  const questsKey = `quests.${name}.mode.guard`;
-  const currentValue = config.get(key) || config.get(questsKey) || false;
+  const currentValue = config.get(key) || false;
   console.log(
     `Guard mode for "${name}" is currently ${currentValue ? "on" : "off"}`
   );
@@ -475,9 +535,7 @@ const actionHustleMode = async function(name) {
   console.log("emailAddress: ", emailAddress);
 
   const subscriptionsKey = `policies.${name}.mode.hustle.subscriptions`;
-  const questsSubscriptionsKey = `policies.${name}.mode.hustle.subscriptions`;
-  let subscriptions =
-    config.get(subscriptionsKey) || config.get(questsSubscriptionsKey) || [];
+  let subscriptions = config.get(subscriptionsKey) || [];
   console.log("subscriptions from file is: ", subscriptions);
 
   const newSubscription = {
@@ -520,7 +578,7 @@ const actionHustleMode = async function(name) {
 };
 
 const actionPolicyModify = async function(name) {
-  const policy = config.get(`policies.${name}`) || config.get(`quests.${name}`);
+  const policy = config.get(`policies.${name}`);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -614,10 +672,11 @@ const promptForTags = async () => {
   }
 };
 
+
 const actionCinch = async () => {
   ensureConfig();
 
-  const { breaches, successes } = await getResults();
+  const { breaches, successes } = await logResults();
 
   /*
   const policies = config.get("policies");
@@ -682,7 +741,9 @@ const run = async function(action, param1, flags) {
     case "check":
       return actionCheck(); // count + fail if warranted
     case "cinch":
-      return actionCinch(param1); // count + fail if warranted
+      return actionCinch(param1); // if there are no breaches, update the baselines to the strictest possible
+    case "ci":
+      return actionPR(); // count + fail if warranted
     default:
       throw new Error(`unknown action: ${action}`);
   }
