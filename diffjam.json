@@ -4,7 +4,7 @@
 			"command": "git grep TODO | wc -l",
 			"description": "Don't add TODOS. DO IT NOW!",
 			"minimize": true,
-			"baseline": 9
+			"baseline": 11
 		}
 	},
 	"tags": [
