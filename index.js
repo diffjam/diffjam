@@ -21,6 +21,8 @@ const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
 const envCi = require('env-ci');
+const gitRemoteOriginUrl = require("git-remote-origin-url");
+const hostedGitInfo = require("hosted-git-info");
 
 // const logo =
 //   "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/   version: " +
@@ -81,6 +83,14 @@ async function commentResults(apiKey, config, results, tags) {
   console.log("env: ", env);
   const {name, service, isCi, branch, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, slug, root} = env;
   let response;
+
+  const remoteOriginUrl = await gitRemoteOriginUrl();
+  const gitServiceInfo = hostedGitInfo.fromUrl(remoteOriginUrl)
+
+  if (gitServiceInfo.type !== "github") {
+    throw new Error(`diffjam does not support your git host in this release ${gitServiceInfo.type}`);
+  }
+
   const body = {
     apiKey,
     clientVersion,
@@ -96,6 +106,8 @@ async function commentResults(apiKey, config, results, tags) {
       pr,
       prBranch,
       slug,
+      remoteOriginUrl,
+      gitService: gitServiceInfo.type,
     }
   };
   try {

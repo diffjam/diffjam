@@ -1,6 +1,6 @@
 {
   "name": "diffjam",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "cli for diffjam.com",
   "main": "index.js",
   "scripts": {
@@ -31,6 +31,8 @@
     "chalk": "2.4.1",
     "conf": "1.4.0",
     "env-ci": "5.0.2",
+    "git-remote-origin-url": "^3.1.0",
+    "hosted-git-info": "^3.0.4",
     "inquirer": "5.2.0",
     "meow": "5.0.0",
     "multispinner": "0.2.1",
