@@ -12,7 +12,7 @@ const fileExists = require("mz/fs").exists;
 const Conf = require("conf");
 const ui = require("./ui");
 const fs = require("fs");
-const gitUrlToSlug = require("git").gitUrlToSlug;
+const gitUrlToSlug = require("./git").gitUrlToSlug;
 let packageJson = JSON.parse(
   fs.readFileSync(`${__dirname}/package.json`).toString()
 );
