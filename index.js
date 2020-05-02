@@ -12,6 +12,7 @@ const fileExists = require("mz/fs").exists;
 const Conf = require("conf");
 const ui = require("./ui");
 const fs = require("fs");
+const gitUrlToSlug = require("git").gitUrlToSlug;
 let packageJson = JSON.parse(
   fs.readFileSync(`${__dirname}/package.json`).toString()
 );
@@ -82,6 +83,12 @@ async function commentResults(apiKey, config, results, tags) {
   const env = envCi();
   console.log("env: ", env);
   const {name, service, isCi, branch, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, slug, root} = env;
+  if (!branch) {
+    branch = process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || process.env.BRANCH_NAME;
+  }
+  if (!slug) {
+    slug = gitUrlToSlug(process.env.GIT_URL);
+  }
   let response;
 
   const remoteOriginUrl = await gitRemoteOriginUrl();
