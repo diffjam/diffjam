@@ -82,7 +82,8 @@ const logBreachError = async breach => {
 async function commentResults(apiKey, config, results, tags) {
   const env = envCi();
   console.log("env: ", env);
-  const {name, service, isCi, branch, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, slug, root} = env;
+  const {name, service, isCi, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, root} = env;
+  let { branch, slug} = env;
   if (!branch) {
     branch = process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || process.env.BRANCH_NAME;
   }
