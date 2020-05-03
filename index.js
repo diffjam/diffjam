@@ -81,15 +81,17 @@ const logBreachError = async breach => {
 
 async function commentResults(apiKey, config, results, tags) {
   const env = envCi();
-  console.log("env: ", env);
   const {name, service, isCi, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, root} = env;
   let { branch, slug} = env;
-  if (!branch) {
-    branch = process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || process.env.BRANCH_NAME;
+  if (!branch || /^PR-/.test(branch + "")) {
+    branch = process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || process.env.BRANCH_NAME || branch;
+    env.branch = branch;
   }
   if (!slug) {
     slug = gitUrlToSlug(process.env.GIT_URL);
+    env.slug = slug;
   }
+  console.log("env: ", env);
   let response;
 
   const remoteOriginUrl = await gitRemoteOriginUrl();
