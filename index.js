@@ -101,7 +101,10 @@ async function commentResults(apiKey, config, results, tags) {
   console.log("pre env: ", env);
   if (service === "jenkins"){
     // this envCI library seems to mess up the jenkins branch, so let's fix it.
-    branch = process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || process.env.BRANCH_NAME || branch;
+    branch = process.env.BRANCH_NAME || process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || branch;
+    console.log("GIT_LOCAL_BRANCH", process.env.GIT_LOCAL_BRANCH);
+    console.log("GIT_BRANCH", process.env.GIT_BRANCH);
+    console.log("BRANCH_NAME", process.env.BRANCH_NAME);
     env.branch = branch;
     if (prBranch) {
       prBranch = branch;

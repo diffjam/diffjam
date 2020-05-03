@@ -1,6 +1,6 @@
 {
   "name": "diffjam",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "description": "cli for diffjam.com",
   "main": "index.js",
   "scripts": {
