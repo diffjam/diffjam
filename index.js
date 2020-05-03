@@ -79,19 +79,40 @@ const logBreachError = async breach => {
   }
 };
 
+
+// [2020-05-03T16:57:29.737Z] env:  { isCi: true,
+//   [2020-05-03T16:57:29.737Z]   name: 'Jenkins',
+//   [2020-05-03T16:57:29.737Z]   service: 'jenkins',
+//   [2020-05-03T16:57:29.737Z]   commit: 'f8178999c68ff64127539b4d147e3df9a8ba99ad',
+//   [2020-05-03T16:57:29.737Z]   branch: 'PR-3632',
+//   [2020-05-03T16:57:29.737Z]   build: '3',
+//   [2020-05-03T16:57:29.737Z]   buildUrl: 'https://jenkins.classdojo.com/job/api/job/PR-3632/3/',
+//   [2020-05-03T16:57:29.737Z]   root: '/mnt/dockerstorageiops/jenkins/jobs/api/workspace_PR-3632_3',
+//   [2020-05-03T16:57:29.737Z]   pr: '3632',
+//   [2020-05-03T16:57:29.737Z]   isPr: true,
+//   [2020-05-03T16:57:29.737Z]   prBranch: 'PR-3632',
+//   [2020-05-03T16:57:29.737Z]   slug: 'classdojo/api' }
+
+
 async function commentResults(apiKey, config, results, tags) {
   const env = envCi();
-  const {name, service, isCi, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, prBranch, root} = env;
-  let { branch, slug} = env;
-  if (!branch || /^PR-/.test(branch + "")) {
+  const {name, service, isCi, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, root} = env;
+  let { branch, slug, prBranch } = env;
+  console.log("pre env: ", env);
+  if (service === "jenkins"){
+    // this envCI library seems to mess up the jenkins branch, so let's fix it.
     branch = process.env.GIT_LOCAL_BRANCH || process.env.GIT_BRANCH || process.env.BRANCH_NAME || branch;
     env.branch = branch;
+    if (prBranch) {
+      prBranch = branch;
+      env.prBranch = prBranch;
+    }
   }
   if (!slug) {
     slug = gitUrlToSlug(process.env.GIT_URL);
     env.slug = slug;
   }
-  console.log("env: ", env);
+  console.log("post env: ", env);
   let response;
 
   const remoteOriginUrl = await gitRemoteOriginUrl();
