@@ -3,7 +3,7 @@
 clean:
 	rm -rf dist
 
-dist: clean
+dist: test clean
 	./publish-executables.sh
 
 test:
