@@ -11,6 +11,7 @@ const pshell = require("pshell");
 const fileExists = require("mz/fs").exists;
 const Conf = require("conf");
 const ui = require("./ui");
+const countPolicy = require("./countPolicy");
 const fs = require("fs");
 const gitUrlToSlug = require("./git").gitUrlToSlug;
 let packageJson = JSON.parse(
@@ -72,8 +73,14 @@ const logBreachError = async breach => {
   console.error(
     `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
       breach.quest.baseline
-    } or ${breach.quest.minimize ? "less" : "more"})`
+    } or ${breach.quest.minimize ? "fewer" : "more"})`
   );
+
+  if (breach.quest.minimize && breach.examples) {
+    console.log("Last 10 examples:")
+    console.log(breach.examples.join("\n").slice(0, 10));
+  }
+
   if (breach.quest.description) {
     console.error("", chalk.magenta(breach.quest.description));
   }
@@ -195,24 +202,6 @@ async function postMetrics(apiKey, config, results, tags) {
   }
 }
 
-async function countPolicy(policy) {
-  let res2;
-  try {
-    res2 = await pshell(policy.command, {
-      echoCommand: false,
-      captureOutput: true
-    });
-  } catch (ex) {
-    console.error("error running shell command ", ex);
-    console.error("policy: ", policy);
-    throw new Error("some error getting matches for countPolicy");
-  }
-  if (res2.code !== 0) {
-    throw new Error("some error getting matches for countPolicy");
-  }
-  const matches = Number.parseInt(res2.stdout, 10);
-  return matches;
-}
 
 const logPolicyResult = (name, policy, result, duration) => {
   if (failedBaseline(policy, result)) {
@@ -256,22 +245,24 @@ const getResults = async () => {
     Object.keys(policies).map(async name => {
       const policy = policies[name];
       const policyStart = new Date();
-      const result = await countPolicy(policy);
+      const {count, examples} = await countPolicy(policy);
       const duration = Date.now() - policyStart.getTime();
-      if (failedBaseline(policy, result)) {
+      if (failedBaseline(policy, count)) {
         breaches.push({
           name,
           quest: policy,
-          result,
+          result: count,
           duration: Date.now() - policyStart.getTime(),
           gaurdMode: policyIsInGuardMode(policy),
+          examples,
         });
       } else {
         if (!policyIsInGuardMode(policy)) {
           successes.push({
             name,
             quest: policy,
-            result,
+            result: count,
+            examples,
             duration: Date.now() - policyStart.getTime(),
             gaurdMode: policyIsInGuardMode(policy),
           });
@@ -279,7 +270,7 @@ const getResults = async () => {
       }
       results[name] = {
         duration,
-        measurement: result
+        measurement: count
       };
     })
   );
@@ -489,7 +480,7 @@ const actionPolicyBaselineFix = async function(name) {
     return process.exit(1);
   }
 
-  const count = await countPolicy(policy);
+  const {count} = await countPolicy(policy);
   const hadABreach = failedBaseline(policy, count);
 
   if (!hadABreach) {
@@ -685,7 +676,7 @@ const actionNewPolicy = async function(name, command) {
     "Give a description for this policy: "
   );
 
-  const matches = await countPolicy(policy);
+  const {count} = await countPolicy(policy);
 
   const trendDirection = await ui.select(
     `Do you want to minimize or maximize for this policy?`,
@@ -700,7 +691,7 @@ const actionNewPolicy = async function(name, command) {
 
   if (
     await ui.confirm(
-      `There are currently ${matches} matches for that configuration.  Save it?`
+      `There are currently ${count} matches for that configuration. Save it?`
     )
   ) {
     savePolicy(name, policy);

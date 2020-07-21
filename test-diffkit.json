@@ -1,12 +1,12 @@
 {
 	"quests": {
 		"killTODOs": {
-			"command": "git grep TODO | wc -l",
+			"command": "git grep TODO",
 			"minimize": true,
 			"baseline": 2
 		},
 		"arrowFunctionsOnly": {
-			"command": "git grep \"async function\" | wc -l",
+			"command": "git grep \"async function\"",
 			"minimize": true,
 			"baseline": 7
 		}
