@@ -1,6 +1,6 @@
 const pshell = require("pshell");
 
-module.exports = async function countPolicy(policy) {
+module.exports = async (policy) => {
   let commandOutput;
   try {
     commandOutput = await pshell(policy.command, {
