@@ -6,6 +6,9 @@ clean:
 dist: clean
 	./publish-executables.sh
 
+lint:
+	./node_modules/.bin/eslint '*.js' '**/*.js'
+
 test:
 	yarn mocha
 

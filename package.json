@@ -1,14 +1,15 @@
 {
   "name": "diffjam",
-  "version": "1.0.17",
+  "version": "2.0.0",
   "description": "cli for diffjam.com",
   "main": "index.js",
   "scripts": {
-    "test": "make test"
+    "test": "make test",
+    "prepublishOnly": "make dist"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cainus/diffjam.git"
+    "url": "git+https://github.com/diffjam/diffjam.git"
   },
   "keywords": [
     "technical",
@@ -20,12 +21,12 @@
   "author": "gregg@caines.ca",
   "license": "mit",
   "bugs": {
-    "url": "https://github.com/cainus/diffjam/issues"
+    "url": "https://github.com/diffjam/diffjam/issues"
   },
   "bin": {
     "diffjam": "index.js"
   },
-  "homepage": "https://github.com/cainus/diffjam#readme",
+  "homepage": "https://github.com/diffjam/diffjam#readme",
   "dependencies": {
     "axios": "0.18.0",
     "chalk": "2.4.1",
@@ -41,6 +42,7 @@
     "urlgrey": "^0.4.4"
   },
   "devDependencies": {
+    "eslint": "^7.5.0",
     "expect": "^25.5.0",
     "mocha": "^7.1.2"
   }

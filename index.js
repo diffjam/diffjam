@@ -11,9 +11,10 @@ const pshell = require("pshell");
 const fileExists = require("mz/fs").exists;
 const Conf = require("conf");
 const ui = require("./ui");
+const countPolicy = require("./countPolicy");
 const fs = require("fs");
 const gitUrlToSlug = require("./git").gitUrlToSlug;
-let packageJson = JSON.parse(
+const packageJson = JSON.parse(
   fs.readFileSync(`${__dirname}/package.json`).toString()
 );
 const clientVersion = packageJson.version;
@@ -71,9 +72,15 @@ const savePolicy = (name, policy) => {
 const logBreachError = async breach => {
   console.error(
     `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
-      breach.quest.baseline
-    } or ${breach.quest.minimize ? "less" : "more"})`
+    breach.quest.baseline
+    } or ${breach.quest.minimize ? "fewer" : "more"})`
   );
+
+  if (breach.quest.minimize && breach.examples) {
+    console.log("Last 10 examples:")
+    console.log(breach.examples.join("\n").slice(0, 10));
+  }
+
   if (breach.quest.description) {
     console.error("", chalk.magenta(breach.quest.description));
   }
@@ -96,10 +103,10 @@ const logBreachError = async breach => {
 
 async function commentResults(apiKey, config, results, tags) {
   const env = envCi();
-  const {name, service, isCi, commit, tag, build, buildUrl, job, jobUrl, isPr, pr, root} = env;
+  const { name, service, commit, isPr, pr } = env;
   let { branch, slug, prBranch } = env;
   console.log("pre env: ", env);
-  if (service === "jenkins"){
+  if (service === "jenkins") {
     // this envCI library seems to mess up the jenkins branch, so let's fix it.
     branch = process.env.CHANGE_BRANCH || branch;
     console.log("CHANGE_BRANCH", process.env.CHANGE_BRANCH);
@@ -195,30 +202,12 @@ async function postMetrics(apiKey, config, results, tags) {
   }
 }
 
-async function countPolicy(policy) {
-  let res2;
-  try {
-    res2 = await pshell(policy.command, {
-      echoCommand: false,
-      captureOutput: true
-    });
-  } catch (ex) {
-    console.error("error running shell command ", ex);
-    console.error("policy: ", policy);
-    throw new Error("some error getting matches for countPolicy");
-  }
-  if (res2.code !== 0) {
-    throw new Error("some error getting matches for countPolicy");
-  }
-  const matches = Number.parseInt(res2.stdout, 10);
-  return matches;
-}
 
 const logPolicyResult = (name, policy, result, duration) => {
   if (failedBaseline(policy, result)) {
     return console.error(
       `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${
-        policy.baseline
+      policy.baseline
       } or ${policy.minimize ? "less" : "more"})`
     );
   }
@@ -242,9 +231,7 @@ const getPolicyNames = () => {
   return Object.keys(policies);
 };
 
-const policyIsInGuardMode = policy => {
-  return policy.mode && policy.mode.guard;
-};
+const policyIsInGuardMode = (policy) => policy.mode && policy.mode.guard;
 
 const getResults = async () => {
   const policies = config.get("policies");
@@ -256,30 +243,30 @@ const getResults = async () => {
     Object.keys(policies).map(async name => {
       const policy = policies[name];
       const policyStart = new Date();
-      const result = await countPolicy(policy);
+      const { count, examples } = await countPolicy(policy);
       const duration = Date.now() - policyStart.getTime();
-      if (failedBaseline(policy, result)) {
+      if (failedBaseline(policy, count)) {
         breaches.push({
           name,
           quest: policy,
-          result,
+          result: count,
+          duration: Date.now() - policyStart.getTime(),
+          gaurdMode: policyIsInGuardMode(policy),
+          examples,
+        });
+      } else if (!policyIsInGuardMode(policy)) {
+        successes.push({
+          name,
+          quest: policy,
+          result: count,
+          examples,
           duration: Date.now() - policyStart.getTime(),
           gaurdMode: policyIsInGuardMode(policy),
         });
-      } else {
-        if (!policyIsInGuardMode(policy)) {
-          successes.push({
-            name,
-            quest: policy,
-            result,
-            duration: Date.now() - policyStart.getTime(),
-            gaurdMode: policyIsInGuardMode(policy),
-          });
-        }
       }
       results[name] = {
         duration,
-        measurement: result
+        measurement: count
       };
     })
   );
@@ -292,7 +279,7 @@ const getResults = async () => {
 
 const logResults = async () => {
 
-  const {results, successes, breaches} = await getResults();
+  const { results, successes, breaches } = await getResults();
 
   breaches.forEach((b) => {
     logBreachError(b);
@@ -316,10 +303,10 @@ const logCheckFailedError = () => {
   console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
 };
 
-const actionCheck = async function() {
+const actionCheck = async function () {
   const start = new Date();
   const results = await logResults();
-  const { breaches, successes } = results;
+  const { breaches } = results;
 
   if (breaches.length) {
     logCheckFailedError();
@@ -329,10 +316,10 @@ const actionCheck = async function() {
 };
 
 
-const actionCount = async function(flags = {}) {
+const actionCount = async function (flags = {}) {
   const start = new Date();
   const { breaches, successes, results } = await logResults();
-  const verbose = !!flags.verbose;
+  const verbose = Boolean(flags.verbose);
 
   if (breaches.length) {
     logCheckFailedError();
@@ -393,7 +380,7 @@ const actionCount = async function(flags = {}) {
 
 
 
-const ensureConfig = function() {
+const ensureConfig = function () {
   if (!config) {
     config = new Conf({
       configName: "diffjam",
@@ -405,7 +392,7 @@ const ensureConfig = function() {
   }
 };
 
-const actionInit = async function() {
+const actionInit = async function () {
   if (!config) {
     ensureConfig();
     console.log("Created diffjam.json for diffjam configuration.");
@@ -415,7 +402,7 @@ const actionInit = async function() {
   }
 };
 
-const actionMainMenu = async function(name, command) {
+const actionMainMenu = async function () {
   console.log(logo + "\n");
   ensureConfig();
   const policyNames = getPolicyNames();
@@ -460,7 +447,7 @@ const actionMainMenu = async function(name, command) {
   }
 };
 
-const actionPolicyDescriptionEdit = async function(name) {
+const actionPolicyDescriptionEdit = async function (name) {
   const key = `policies.${name}`;
   const policy = config.get(key);
 
@@ -481,7 +468,7 @@ const actionPolicyDescriptionEdit = async function(name) {
   savePolicy(name, policy);
 };
 
-const actionPolicyBaselineFix = async function(name) {
+const actionPolicyBaselineFix = async function (name) {
   const policy = config.get(`policies.${name}`);
 
   if (!policy) {
@@ -489,7 +476,7 @@ const actionPolicyBaselineFix = async function(name) {
     return process.exit(1);
   }
 
-  const count = await countPolicy(policy);
+  const { count } = await countPolicy(policy);
   const hadABreach = failedBaseline(policy, count);
 
   if (!hadABreach) {
@@ -507,7 +494,7 @@ const actionPolicyBaselineFix = async function(name) {
   );
 };
 
-const actionPolicyDelete = async function(name) {
+const actionPolicyDelete = async function (name) {
   const policy = config.get(`policies.${name}`);
 
   if (!policy) {
@@ -527,7 +514,7 @@ const actionPolicyDelete = async function(name) {
   config.delete(`policies.${name}`);
 };
 
-const getId = async function() {
+const getId = async function () {
   const emailCommand = `git config user.email`;
   const res2 = await pshell(emailCommand, {
     echoCommand: false,
@@ -542,7 +529,7 @@ const getId = async function() {
   return emailAddress;
 };
 
-const actionGuardMode = async function(name) {
+const actionGuardMode = async function (name) {
   const key = `policies.${name}.mode.guard`;
   const currentValue = config.get(key) || false;
   console.log(
@@ -565,7 +552,7 @@ hustle-mode, it will additionally check that the current codebase has improved i
 a policy beyond the current stat.
 
 */
-const actionHustleMode = async function(name) {
+const actionHustleMode = async function (name) {
   const emailAddress = await getId();
   const hustleMenuChoice = await ui.select("Choose your difficulty mode!", {
     "warn for 5 seconds (diffjam check will pause for 5 seconds to warn you when you don't make progress and then it will continue)":
@@ -624,7 +611,7 @@ const actionHustleMode = async function(name) {
   }
 };
 
-const actionPolicyModify = async function(name) {
+async function actionPolicyModify (name) {
   const policy = config.get(`policies.${name}`);
 
   if (!policy) {
@@ -661,10 +648,10 @@ const actionPolicyModify = async function(name) {
     default:
       throw new Error(`unknown choice: ${modifyMenuChoice}`);
   }
-};
+}
 
 // create a policy
-const actionNewPolicy = async function(name, command) {
+async function actionNewPolicy (name, command) {
   ensureConfig();
 
   if (!name) {
@@ -685,7 +672,7 @@ const actionNewPolicy = async function(name, command) {
     "Give a description for this policy: "
   );
 
-  const matches = await countPolicy(policy);
+  const { count } = await countPolicy(policy);
 
   const trendDirection = await ui.select(
     `Do you want to minimize or maximize for this policy?`,
@@ -696,11 +683,11 @@ const actionNewPolicy = async function(name, command) {
   );
 
   policy.minimize = trendDirection === "minimize";
-  policy.baseline = matches;
+  policy.baseline = count;
 
   if (
     await ui.confirm(
-      `There are currently ${matches} matches for that configuration.  Save it?`
+      `There are currently ${count} matches for that configuration. Save it?`
     )
   ) {
     savePolicy(name, policy);
@@ -708,19 +695,18 @@ const actionNewPolicy = async function(name, command) {
   } else {
     console.log("Cancelled save.");
   }
-};
+}
 
-const promptForTags = async () => {
+async function promptForTags () {
   const tags = config.get("tags") || [];
   if (tags.length === 0) {
     const tagInput = await ui.textInput("Enter the name of this codebase: ");
     tags.push(`codebase:${tagInput}`);
     config.set("tags", tags);
   }
-};
+}
 
-
-const actionCinch = async () => {
+async function actionCinch () {
   ensureConfig();
 
   const { breaches, successes } = await logResults();
@@ -763,15 +749,19 @@ const actionCinch = async () => {
       config.set(`policies.${result.name}.baseline`, result.result);
       console.log(
         `${GREEN_CHECK} ${chalk.bold(result.name)} was just cinched from ${
-          result.quest.baseline
+        result.quest.baseline
         } to ${chalk.bold(result.result)}!`
       );
     }
   }
-};
+}
+
+function actionPR () {
+  throw new Error("no implemented!");
+}
 
 // run!
-const run = async function(action, param1, flags) {
+const run = async function (action, param1, flags) {
   await getConfig(flags.config);
   if (!action || action === "menu") {
     return actionMainMenu();
