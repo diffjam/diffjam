@@ -756,7 +756,6 @@ async function actionCinch () {
   }
 }
 
-// TODO: implement me?
 function actionPR () {
   throw new Error("no implemented!");
 }

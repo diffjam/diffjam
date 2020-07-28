@@ -15,11 +15,7 @@ module.exports = async (policy) => {
   if (commandOutput.code !== 0) {
     throw new Error("some error getting matches for countPolicy");
   }
-  let count = Number.parseInt(commandOutput.stdout, 10);
-  let examples = [];
-  if (isNaN(count)) {
-    examples = commandOutput.stdout.split("\n").filter(Boolean);
-    count = examples.length;
-  }
+  examples = commandOutput.stdout.split("\n").filter(Boolean);
+  count = examples.length;
   return {count, examples};
 }
