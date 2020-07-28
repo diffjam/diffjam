@@ -6,6 +6,10 @@ clean:
 dist: clean
 	./publish-executables.sh
 
+prepublish:
+	# prepublish targets
+	# dist
+
 lint:
 	./node_modules/.bin/eslint '*.js' '**/*.js'
 
