@@ -3,7 +3,6 @@ const pshell = require("pshell");
 module.exports = async (policy) => {
   let commandOutput;
   const {command} = policy;
-  console.log("command: ", command)
   try {
     commandOutput = await pshell(command, {
       echoCommand: false,
@@ -24,9 +23,7 @@ module.exports = async (policy) => {
       throw new Error("non-zero exit getting matches for countPolicy");
     }
   }
-  console.log("commandOutput: ", commandOutput);
   examples = commandOutput.stdout.split("\n").filter(Boolean);
-  console.log("examples: ", examples);
   count = examples.length;
   return {count, examples};
 }
