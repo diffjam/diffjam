@@ -76,9 +76,9 @@ const logBreachError = async breach => {
     } or ${breach.quest.minimize ? "fewer" : "more"})`
   );
 
-  if (breach.quest.minimize && breach.examples) {
+  if (breach.quest.minimize) {
     console.log("Last 10 examples:")
-    console.log(breach.examples.join("\n").slice(0, 10));
+    console.log(breach.examples.slice(0, 10).join("\n"));
   }
 
   if (breach.quest.description) {
