@@ -251,17 +251,17 @@ const getResults = async () => {
           quest: policy,
           result: count,
           duration: Date.now() - policyStart.getTime(),
-          gaurdMode: policyIsInGuardMode(policy),
+          guardMode: policyIsInGuardMode(policy),
           examples,
         });
-      } else if (!policyIsInGuardMode(policy)) {
+      } else {
         successes.push({
           name,
           quest: policy,
           result: count,
           examples,
           duration: Date.now() - policyStart.getTime(),
-          gaurdMode: policyIsInGuardMode(policy),
+          guardMode: policyIsInGuardMode(policy),
         });
       }
       results[name] = {
@@ -286,7 +286,7 @@ const logResults = async () => {
   });
 
   successes.forEach((s) => {
-    if (!s.gaurdMode) {
+    if (!s.guardMode) {
       logPolicyResult(s.name, s.quest, s.result, s.duration);
     }
   });
