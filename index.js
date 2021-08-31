@@ -158,7 +158,7 @@ async function commentResults(apiKey, config, results, tags) {
       throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
     }
   } catch (ex) {
-    if (ex.response.status === 400) {
+    if (ex.response && ex.response.status === 400) {
       // This is an expected error. Something is wrong (probably with the configuration);
       console.error(
         chalk.red.bold("The error reported an issue with your configuration")
