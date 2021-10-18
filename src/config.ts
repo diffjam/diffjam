@@ -3,18 +3,8 @@ import { exists as fileExists } from "mz/fs";
 // @ts-ignore
 import Conf from "conf";
 import { basename, extname } from "path";
+import { Policy } from "./Policy";
 let config: any;
-
-export interface Policy {
-  baseline: number;
-  minimize: boolean;
-  command: string;
-  description: string;
-  mode?: {
-    guard?: boolean;
-  }
-}
-
 
 export function exists() {
     return Boolean(config);
@@ -46,21 +36,36 @@ export function savePolicy(name: string, policy: Policy) {
 }
 export function getPolicyGuardMode(name: string) {
     const key = `policies.${name}.mode.guard`;
-    return config.get(key) || false;
+    return Boolean(config.get(key)) || false;
 }
 export function setPolicyGuardMode(name: string, value: boolean) {
     const key = `policies.${name}.mode.guard`;
-    return config.set(key, value);
+    config.set(key, value);
 }
 export function getPolicyNames() {
-    const policies = config.get("policies");
-    return Object.keys(policies);
+  const policies = config.get("policies");
+  return Object.keys(policies);
 }
-export function getTags() { return config.get("tags") || []; }
-export function setTags(tags: string[]) { return config.set("tags", tags); }
-export function getPolicies() { return config.get("policies"); }
-export function getPolicy(name: string) { return config.get(`policies.${name}`); }
-export function deletePolicy(name: string) { return config.delete(`policies.${name}`); }
+export function getTags() {
+  return (config.get("tags") as string[]) || [];
+}
+export function setTags(tags: string[]) {
+  config.set("tags", tags);
+}
+export function getPolicies() {
+  const filePolicies = config.get("policies");
+  const retval: {[key: string]: Policy} = {};
+  for (const name in filePolicies) {
+      retval[name] = Policy.fromJson(filePolicies[name]);
+  }
+  return retval;
+}
+export function getPolicy(name: string) {
+  return Policy.fromJson(config.get(`policies.${name}`));
+}
+export function deletePolicy(name: string) {
+  config.delete(`policies.${name}`);
+}
 export function setPolicyBaseline(name: string, count: number) {
-    config.set(`policies.${name}.baseline`, count);
+  config.set(`policies.${name}.baseline`, count);
 }

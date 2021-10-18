@@ -1,7 +1,8 @@
 // @ts-ignore
 import pshell from "pshell";
+import { Policy } from "./Policy";
 
-export const countPolicy = async (policy: { command: any; description?: string; minimize?: boolean; baseline?: number; }) => {
+export const countPolicy = async (policy: Policy) => {
   let commandOutput;
   const {command} = policy;
   try {
@@ -24,7 +25,7 @@ export const countPolicy = async (policy: { command: any; description?: string; 
       throw new Error("non-zero exit getting matches for countPolicy");
     }
   }
-  const examples = commandOutput.stdout.split("\n").filter(Boolean);
-  const count = examples.length;
+  const examples: string[] = commandOutput.stdout.split("\n").filter(Boolean);
+  const count: number = examples.length;
   return {count, examples};
 }
