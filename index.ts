@@ -1,19 +1,12 @@
-#!/usr/bin/env node
-
-"use strict";
-
-const path = require("path");
-const _ = require("lodash");
-const axios = require("axios");
-const meow = require("meow");
-const chalk = require("chalk");
-const pshell = require("pshell");
-const fileExists = require("mz/fs").exists;
-const Conf = require("conf");
-const ui = require("./ui");
-const countPolicy = require("./countPolicy");
-const fs = require("fs");
-const gitUrlToSlug = require("./git").gitUrlToSlug;
+import _ from "lodash";
+import axios from "axios";
+// @ts-ignore
+import meow from "meow";
+import chalk from "chalk";
+import * as ui from "./src/ui";
+import {countPolicy} from "./src/countPolicy";
+import fs from "fs";
+import {gitUrlToSlug} from "./src/git";
 const packageJson = JSON.parse(
   fs.readFileSync(`${__dirname}/package.json`).toString()
 );
@@ -22,9 +15,11 @@ const clientVersion = packageJson.version;
 const GREEN_CHECK = chalk.green("✔️");
 const RED_X = chalk.red("❌️");
 
-const envCi = require('env-ci');
-const gitRemoteOriginUrl = require("git-remote-origin-url");
-const hostedGitInfo = require("hosted-git-info");
+import envCi from 'env-ci';
+import gitRemoteOriginUrl from "git-remote-origin-url";
+import hostedGitInfo from "hosted-git-info";
+import * as configObj from "./src/config";
+import { Policy } from "./src/config";
 
 // const logo =
 //   "     _ _  __  __ _                 \n    | (_)/ _|/ _(_)                \n  __| |_| |_| |_ _  __ _ _ __ ___  \n / _` | |  _|  _| |/ _` | '_ ` _ \\ \n| (_| | | | | | | | (_| | | | | | |\n \\__,_|_|_| |_| | |\\__,_|_| |_| |_|\n               _/ |                \n              |__/   version: " +
@@ -42,34 +37,15 @@ ${logoBrown.bold("|_____/  |_| |_|   |_|")}    ${logoBrown("\\____/   \\__,_| |_
                           ${logoBrown("version: ")} ${logoYellow(clientVersion)}
 `;
 
-// conf for config? https://github.com/sindresorhus/conf
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
 // asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
 
-process.on("unhandledRejection", err => {
+process.on("unhandledRejection", (err: any) => {
   console.error("err: ", err);
   throw err;
 });
 
-let config;
-const getConfig = async (file = "./diffjam.json") => {
-  const configName = path
-    .basename(file)
-    .slice(0, -1 * path.extname(file).length);
-  const exists = await fileExists(file);
-  if (exists) {
-    config = new Conf({
-      configName,
-      cwd: "."
-    });
-  }
-};
-
-const savePolicy = (name, policy) => {
-  config.set(`policies.${name}`, policy);
-};
-
-const logBreachError = async breach => {
+const logBreachError = async (breach: { name: string; result: any; quest: { baseline: any; minimize: any; description: string; }; examples: any[]; }) => {
   console.error(
     `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
     breach.quest.baseline
@@ -101,8 +77,8 @@ const logBreachError = async breach => {
 //   [2020-05-03T16:57:29.737Z]   slug: 'classdojo/api' }
 
 
-async function commentResults(apiKey, config, results, tags) {
-  const env = envCi();
+async function commentResults(apiKey: any, config: any, results: {}, tags?: any) {
+  const env: any = envCi();
   const { name, service, commit, isPr, pr } = env;
   let { branch, slug, prBranch } = env;
   console.log("pre env: ", env);
@@ -120,7 +96,7 @@ async function commentResults(apiKey, config, results, tags) {
     }
   }
   if (!slug) {
-    slug = gitUrlToSlug(process.env.GIT_URL);
+    slug = gitUrlToSlug(process.env.GIT_URL || "");
     env.slug = slug;
   }
   console.log("post env: ", env);
@@ -129,8 +105,8 @@ async function commentResults(apiKey, config, results, tags) {
   const remoteOriginUrl = await gitRemoteOriginUrl();
   const gitServiceInfo = hostedGitInfo.fromUrl(remoteOriginUrl)
 
-  if (gitServiceInfo.type !== "github") {
-    throw new Error(`diffjam does not support your git host in this release ${gitServiceInfo.type}`);
+  if (gitServiceInfo?.type !== "github") {
+    throw new Error(`diffjam does not support your git host in this release ${gitServiceInfo?.type}`);
   }
 
   const body = {
@@ -157,7 +133,7 @@ async function commentResults(apiKey, config, results, tags) {
     if (response.status < 200 || response.status > 299) {
       throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
     }
-  } catch (ex) {
+  } catch (ex: any) {
     if (ex.response && ex.response.status === 400) {
       // This is an expected error. Something is wrong (probably with the configuration);
       console.error(
@@ -172,7 +148,7 @@ async function commentResults(apiKey, config, results, tags) {
   }
 }
 
-async function postMetrics(apiKey, config, results, tags) {
+async function postMetrics(apiKey: string, config: any, results: {}, tags?: any) {
   let response;
   const body = {
     apiKey,
@@ -187,7 +163,7 @@ async function postMetrics(apiKey, config, results, tags) {
     if (response.status < 200 || response.status > 299) {
       throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
     }
-  } catch (ex) {
+  } catch (ex: any) {
     if (ex.response.status === 400) {
       // This is an expected error. Something is wrong (probably with the configuration);
       console.error(
@@ -202,8 +178,7 @@ async function postMetrics(apiKey, config, results, tags) {
   }
 }
 
-
-const logPolicyResult = (name, policy, result, duration) => {
+const logPolicyResult = (name: string, policy: Policy, result: any, duration: any) => {
   if (failedBaseline(policy, result)) {
     return console.error(
       `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${
@@ -216,28 +191,24 @@ const logPolicyResult = (name, policy, result, duration) => {
   );
 };
 
-function failedBaseline(policy, result) {
+function failedBaseline(policy: Policy, result: number) {
   if (policy.minimize && policy.baseline < result) {
     return true;
   }
-  if (policy.maximize && policy.baseline > result) {
+  if ((policy.minimize === false) && policy.baseline > result) {
     return true;
   }
   return false;
 }
 
-const getPolicyNames = () => {
-  const policies = config.get("policies");
-  return Object.keys(policies);
-};
 
-const policyIsInGuardMode = (policy) => policy.mode && policy.mode.guard;
+const policyIsInGuardMode = (policy: Policy) => policy.mode && policy.mode.guard;
 
 const getResults = async () => {
-  const policies = config.get("policies");
-  const results = {};
-  const breaches = [];
-  const successes = [];
+  const policies = configObj.getPolicies();
+  const results: {[key: string]: {duration: number, measurement: number}} = {};
+  const breaches: { name: string; quest: any; result: any; duration: number; guardMode: any; examples: any; }[] = [];
+  const successes: { name: string; quest: any; result: any; examples: any; duration: number; guardMode: any; }[] = [];
 
   await Promise.all(
     Object.keys(policies).map(async name => {
@@ -316,7 +287,7 @@ const actionCheck = async function () {
 };
 
 
-const actionCount = async function (flags = {}) {
+const actionCount = async function (flags: any = {}) {
   const start = new Date();
   const { breaches, successes, results } = await logResults();
   const verbose = Boolean(flags.verbose);
@@ -377,24 +348,9 @@ const actionCount = async function (flags = {}) {
   console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
 };
 
-
-
-
-const ensureConfig = function () {
-  if (!config) {
-    config = new Conf({
-      configName: "diffjam",
-      cwd: ".",
-      serialize: value => JSON.stringify(value, null, 2)
-    });
-    config.set("policies", {});
-    config.set("tags", []);
-  }
-};
-
 const actionInit = async function () {
-  if (!config) {
-    ensureConfig();
+  if (!configObj.exists()) {
+    configObj.ensureConfig();
     console.log("Created diffjam.json for diffjam configuration.");
   } else {
     console.error("A diffjam.json already exists.  Skipping initialization.");
@@ -404,10 +360,10 @@ const actionInit = async function () {
 
 const actionMainMenu = async function () {
   console.log(logo + "\n");
-  ensureConfig();
-  const policyNames = getPolicyNames();
-  const editChoicesMap = {};
-  policyNames.forEach(name => {
+  configObj.ensureConfig();
+  const policyNames = configObj.getPolicyNames();
+  const editChoicesMap: {[key: string]: {type: string, name: string}} = {};
+  policyNames.forEach((name: string) => {
     editChoicesMap[`edit "${name}"`] = {
       type: "edit_policy",
       name
@@ -447,9 +403,8 @@ const actionMainMenu = async function () {
   }
 };
 
-const actionPolicyDescriptionEdit = async function (name) {
-  const key = `policies.${name}`;
-  const policy = config.get(key);
+const actionPolicyDescriptionEdit = async function (name: any) {
+  const policy = configObj.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -465,11 +420,11 @@ const actionPolicyDescriptionEdit = async function (name) {
 
   policy.description = await ui.textInput("Give a new description: ");
 
-  savePolicy(name, policy);
+  configObj.savePolicy(name, policy);
 };
 
-const actionPolicyBaselineFix = async function (name) {
-  const policy = config.get(`policies.${name}`);
+const actionPolicyBaselineFix = async function (name: any) {
+  const policy = configObj.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -488,14 +443,14 @@ const actionPolicyBaselineFix = async function (name) {
 
   const oldBaseline = policy.baseline;
 
-  config.set(`policies.${name}.baseline`, count);
+  configObj.setPolicyBaseline(name, count);
   console.log(
     `The baseline for that policy was changed from ${oldBaseline} to ${count}`
   );
 };
 
-const actionPolicyDelete = async function (name) {
-  const policy = config.get(`policies.${name}`);
+const actionPolicyDelete = async function (name: any) {
+  const policy = configObj.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -511,27 +466,12 @@ const actionPolicyDelete = async function (name) {
     return process.exit(0);
   }
 
-  config.delete(`policies.${name}`);
+  configObj.deletePolicy(`policies.${name}`);
 };
 
-const getId = async function () {
-  const emailCommand = `git config user.email`;
-  const res2 = await pshell(emailCommand, {
-    echoCommand: false,
-    captureOutput: true
-  });
-  if (res2.code !== 0) {
-    throw new Error(
-      "Sorry.  For some reason we can't determine who you are from your git config, so hustle-mode won't work."
-    );
-  }
-  const emailAddress = res2.stdout.toString();
-  return emailAddress;
-};
-
-const actionGuardMode = async function (name) {
+const actionGuardMode = async function (name: any) {
   const key = `policies.${name}.mode.guard`;
-  const currentValue = config.get(key) || false;
+  const currentValue = configObj.getPolicyGuardMode(key);
   console.log(
     `Guard mode for "${name}" is currently ${currentValue ? "on" : "off"}`
   );
@@ -539,80 +479,14 @@ const actionGuardMode = async function (name) {
     "Turn guard mode OFF (Check for regressions, show results, report metrics.  This is the default.)": false,
     "Turn guard mode ON (Check for regressions but don't show results or report metrics)": true
   });
-  config.set(key, menuChoice);
+  configObj.setPolicyGuardMode(name, menuChoice);
   console.log(
     `Guard mode for "${name}" is now set to ${menuChoice ? "on" : "off"}`
   );
 };
 
-/*
-
-While `diffjam check` by default looks for regressions, when a user signs up for
-hustle-mode, it will additionally check that the current codebase has improved in
-a policy beyond the current stat.
-
-*/
-const actionHustleMode = async function (name) {
-  const emailAddress = await getId();
-  const hustleMenuChoice = await ui.select("Choose your difficulty mode!", {
-    "warn for 5 seconds (diffjam check will pause for 5 seconds to warn you when you don't make progress and then it will continue)":
-      "warn5",
-    "warn for 15 seconds (diffjam check will pause for 15 seconds to warn you when you don't make progress and then it will continue)":
-      "warn15",
-    "prompt (diffjam check will interactively ask you to confirm if it's okay that you didn't make progress on a policy)":
-      "prompt",
-    "fail (diffjam check will simply fail if you don't make progress)": "fail",
-    "none (stop hustle-mode)": "none"
-  });
-
-  console.log("hustle mode difficulty level: ", hustleMenuChoice);
-  console.log("emailAddress: ", emailAddress);
-
-  const subscriptionsKey = `policies.${name}.mode.hustle.subscriptions`;
-  let subscriptions = config.get(subscriptionsKey) || [];
-  console.log("subscriptions from file is: ", subscriptions);
-
-  const newSubscription = {
-    id: emailAddress,
-    behaviour: hustleMenuChoice
-  };
-
-  const currentSubscriptionIdx = _.findIndex(
-    subscriptions,
-    sub => sub.id === emailAddress
-  );
-  if (currentSubscriptionIdx === -1) {
-    if (hustleMenuChoice === "none") {
-      console.log("You are currently not in hustle-mode");
-      return;
-    }
-    subscriptions.push(newSubscription);
-    config.set(subscriptionsKey, subscriptions);
-    console.log("You have been subscribed to hustle-mode!");
-    console.log("This doesn't actually work YET");
-    return;
-  }
-
-  subscriptions[currentSubscriptionIdx] = newSubscription;
-  subscriptions = subscriptions.filter(sub => sub.behaviour !== "none");
-  console.log("setting...");
-  console.log("subscriptionsKey: ", subscriptionsKey);
-  console.log("subscriptions: ", subscriptions);
-  if (!Array.isArray(subscriptions)) {
-    throw new Error("subscriptions was not an array");
-  }
-
-  config.set(subscriptionsKey, subscriptions);
-
-  if (hustleMenuChoice === "none") {
-    console.log("You have been removed from hustle-mode.");
-  } else {
-    console.log("You have been subscribed to hustle-mode!");
-  }
-};
-
-async function actionPolicyModify (name) {
-  const policy = config.get(`policies.${name}`);
+async function actionPolicyModify (name: any) {
+  const policy = configObj.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -639,8 +513,6 @@ async function actionPolicyModify (name) {
       return actionPolicyDelete(name);
     case "policy_baseline_fix":
       return actionPolicyBaselineFix(name);
-    case "mode_hustle":
-      return actionHustleMode(name);
     case "mode_guard":
       return actionGuardMode(name);
     case "exit":
@@ -651,8 +523,8 @@ async function actionPolicyModify (name) {
 }
 
 // create a policy
-async function actionNewPolicy (name, command) {
-  ensureConfig();
+async function actionNewPolicy (name?: string, command?: string) {
+  configObj.ensureConfig();
 
   if (!name) {
     name = await ui.textInput("Enter a name for this policy: ");
@@ -664,8 +536,11 @@ async function actionNewPolicy (name, command) {
     );
   }
 
-  const policy = {
-    command
+  const policy: Policy = {
+    command,
+    description: "",
+    minimize: true,
+    baseline: 0,
   };
 
   policy.description = await ui.textInput(
@@ -690,7 +565,7 @@ async function actionNewPolicy (name, command) {
       `There are currently ${count} matches for that configuration. Save it?`
     )
   ) {
-    savePolicy(name, policy);
+    configObj.savePolicy(name, policy);
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");
@@ -698,16 +573,16 @@ async function actionNewPolicy (name, command) {
 }
 
 async function promptForTags () {
-  const tags = config.get("tags") || [];
+  const tags = configObj.getTags();
   if (tags.length === 0) {
     const tagInput = await ui.textInput("Enter the name of this codebase: ");
     tags.push(`codebase:${tagInput}`);
-    config.set("tags", tags);
+    configObj.setTags(tags);
   }
 }
 
 async function actionCinch () {
-  ensureConfig();
+  configObj.ensureConfig();
 
   const { breaches, successes } = await logResults();
 
@@ -746,7 +621,7 @@ async function actionCinch () {
       (result.quest.maximize && result.result > result.quest.baseline);
 
     if (exceeds) {
-      config.set(`policies.${result.name}.baseline`, result.result);
+      configObj.setPolicyBaseline(result.name, result.result);
       console.log(
         `${GREEN_CHECK} ${chalk.bold(result.name)} was just cinched from ${
         result.quest.baseline
@@ -761,8 +636,8 @@ function actionPR () {
 }
 
 // run!
-const run = async function (action, param1, flags) {
-  await getConfig(flags.config);
+const run = async function (action: string, param1: any, flags: { config: any; }) {
+  await configObj.getConfig(flags.config);
   if (!action || action === "menu") {
     return actionMainMenu();
   }
@@ -778,7 +653,7 @@ const run = async function (action, param1, flags) {
     case "check":
       return actionCheck(); // count + fail if warranted
     case "cinch":
-      return actionCinch(param1); // if there are no breaches, update the baselines to the strictest possible
+      return actionCinch(); // if there are no breaches, update the baselines to the strictest possible
     case "ci":
       return actionPR(); // count + fail if warranted
     default:

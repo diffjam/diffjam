@@ -1,4 +1,4 @@
-const gitUrlToSlug = require("../git").gitUrlToSlug;
+const gitUrlToSlug = require("../src/git").gitUrlToSlug;
 const expect = require("expect");
 
 describe("gitUrlToSlug", () => {

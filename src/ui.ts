@@ -1,13 +1,13 @@
-const inquirer = require("inquirer");
+import { prompt as _prompt } from "inquirer";
 // inquirer for getting input from prompts: https://www.npmjs.com/package/inquirer
 
 // questions is a map of questions to values
-exports.select = async (prompt, questions) => {
+export async function select(prompt: string, questions: {[key: string]: unknown}) {
   const choices = [];
   for (const key in questions) {
     choices.push({name: key, value: questions[key]});
   }
-  const { choice } = await inquirer.prompt({
+  const { choice } = await _prompt({
     "type": "list",
     "name": "choice",
     choices,
@@ -17,8 +17,8 @@ exports.select = async (prompt, questions) => {
 }
 
 
-exports.confirm = async (promptText) => {
-  const { retval } = await inquirer.prompt({
+export async function confirm(promptText: string) {
+  const { retval } = await _prompt({
     type: "confirm",
     name: "retval",
     message: promptText,
@@ -26,8 +26,8 @@ exports.confirm = async (promptText) => {
   return retval;
 }
 
-exports.textInput = async (promptText) => {
-  const { text } = await inquirer.prompt({
+export async function textInput(promptText: string): Promise<string> {
+  const { text } = await _prompt({
     type: "input",
     name: "text",
     message: promptText,

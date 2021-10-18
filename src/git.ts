@@ -1,7 +1,8 @@
 
-const urlgrey = require("urlgrey");
+// @ts-ignore
+import urlgrey from "urlgrey";
 
-const gitUrlToSlug = (gitUrl) => {
+const gitUrlToSlug = (gitUrl: string) => {
   // looks like: https://github.com/org/repo.git
   if (!gitUrl) {
     return null;
@@ -11,4 +12,5 @@ const gitUrlToSlug = (gitUrl) => {
   return slug;
 }
 
-exports.gitUrlToSlug = gitUrlToSlug;
+const _gitUrlToSlug = gitUrlToSlug;
+export { _gitUrlToSlug as gitUrlToSlug };

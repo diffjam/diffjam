@@ -1,11 +1,11 @@
-const countPolicy = require("../countPolicy");
-const expect = require("expect");
+import {countPolicy} from "../src/countPolicy";
+import expect from "expect";
 
-const getException = async promise => {
+const getException = async (promise: Promise<unknown>) => {
   try {
     await promise;
     throw new Error(`expected exception was not raised`);
-  } catch (ex) {
+  } catch (ex: any) {
     if (ex.message === "expected exception was not raised") {
       console.log("throwing");
       throw ex;
