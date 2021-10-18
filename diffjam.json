@@ -3,7 +3,6 @@
 		"No TODOs": {
 			"command": "git grep TODO",
 			"description": "Don't add TODOS. DO IT NOW!",
-			"minimize": true,
 			"baseline": 7
 		}
 	},

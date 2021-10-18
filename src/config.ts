@@ -34,14 +34,6 @@ export async function getConfig(file = "./diffjam.json") {
 export function savePolicy(name: string, policy: Policy) {
     config.set(`policies.${name}`, policy);
 }
-export function getPolicyGuardMode(name: string) {
-    const key = `policies.${name}.mode.guard`;
-    return Boolean(config.get(key)) || false;
-}
-export function setPolicyGuardMode(name: string, value: boolean) {
-    const key = `policies.${name}.mode.guard`;
-    config.set(key, value);
-}
 export function getPolicyNames() {
   const policies = config.get("policies");
   return Object.keys(policies);

@@ -3,7 +3,7 @@
 This is a command-line utility for documenting, tracking, and discouraging bad patterns in your codebase.
 
 Diffjam allows you to create "policies" -- basically any rule you want to enforce or pattern you want
-to either maximize or minimize.  You tell diffjam how to count occurrences
+to minimize.  You tell diffjam how to count occurrences
 by providing your own counting shell commands like `git grep TODO | wc -l`,
 which looks for and counts instances of TODO in the codebase.  It can also be used in a githook to prevent new cases of a bad pattern.
 
