@@ -1,6 +1,6 @@
 
 import * as configObj from "../config";
-import { countPolicy } from "../countPolicy";
+import { countMatches, findAndCountMatches, findMatches } from "../match";
 import * as ui from "../ui";
 
 const actionPolicyDescriptionEdit = async function (name: any) {
@@ -31,7 +31,7 @@ const actionPolicyBaselineFix = async function (name: any) {
     return process.exit(1);
   }
 
-  const { count } = await countPolicy(policy);
+  const count = countMatches(await findMatches(policy.filePattern, policy.search));
 
   if (policy.isCountAcceptable(count)) {
     console.error(

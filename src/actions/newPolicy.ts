@@ -1,30 +1,35 @@
 
 import * as configObj from "../config";
-import { countPolicy } from "../countPolicy";
+import { countMatches, findAndCountMatches, findMatches } from "../match";
 import { Policy } from "../Policy";
 import * as ui from "../ui";
 
 // create a policy
-export const actionNewPolicy = async (name?: string, command?: string) => {
+export const actionNewPolicy = async (name?: string, search?: string, filePattern?: string) => {
   configObj.ensureConfig();
 
   if (!name) {
     name = await ui.textInput("Enter a name for this policy: ");
   }
 
-  if (!command) {
-    command = await ui.textInput(
-      "Enter the command that will return your metric: "
+  if (!search) {
+    search = await ui.textInput(
+      "Enter the search criteria for this policy: "
     );
   }
 
-  const policy = new Policy("", command, 0);
+  if (!filePattern) {
+    filePattern = await ui.textInput(
+      "Enter the filePattern to search for this policy: "
+    );
+  }
+
+  const policy = new Policy("", filePattern, search, 0);
 
   policy.description = await ui.textInput(
     "Give a description for this policy: "
   );
-
-  const { count } = await countPolicy(policy);
+  const count = countMatches(await findMatches(policy.filePattern, policy.search));
 
   policy.baseline = count;
 

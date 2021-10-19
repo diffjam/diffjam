@@ -1,7 +1,8 @@
 import chalk from "chalk";
-import { countPolicy } from "./countPolicy";
 import { Policy } from "./Policy";
 import * as configObj from "./config";
+import { countMatches, findAndCountMatches, findMatches } from "./match";
+import { flatten } from "lodash";
 
 const RED_X = chalk.red("❌️");
 export const GREEN_CHECK = chalk.green("✔️");
@@ -63,7 +64,9 @@ export const getResults = async () => {
     Object.keys(policies).map(async name => {
       const policy = policies[name];
       const policyStart = new Date();
-      const { count, examples } = await countPolicy(policy);
+      const matches = await findMatches(policy.filePattern, policy.search);
+      const count = countMatches(matches);
+      const examples = flatten(Object.values(matches)).map((i) => i.line).slice(0, 5);
       const duration = Date.now() - policyStart.getTime();
       if (!policy.isCountAcceptable(count)) {
         breaches.push({

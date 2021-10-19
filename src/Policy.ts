@@ -1,25 +1,29 @@
 import { isBoolean, isNumber, isString } from "lodash";
+import { findInString } from "./findInString";
 
 
 export class Policy {
 
   constructor(
     public description: string,
-    public command: string,
+    public filePattern: string,
+    public search: string,
     public baseline: number,
     public hiddenFromOutput: boolean = false
   ) {
   }
 
   isCountAcceptable(count: number) {
-    return count >= this.baseline;
+    return count <= this.baseline;
   }
-
 
   isCountCinchable(count: number) {
-    return count > this.baseline;
+    return count < this.baseline;
   }
 
+  evaluateFileContents(contents: string) {
+    return findInString(this.search, contents);
+  }
 
   static fromJson(obj: any) {
     if (!obj) {
@@ -30,8 +34,12 @@ export class Policy {
       throw new Error("missing baseline");
     }
 
-    if (!obj.hasOwnProperty("command") || !isString(obj.command)) {
-      throw new Error("missing command");
+    if (!obj.hasOwnProperty("search") || !isString(obj.search)) {
+      throw new Error("missing search");
+    }
+
+    if (!obj.hasOwnProperty("filePattern") || !isString(obj.filePattern)) {
+      throw new Error("missing filePattern");
     }
 
     if (!obj.hasOwnProperty("description") || !isString(obj.description)) {
@@ -43,6 +51,6 @@ export class Policy {
       throw new Error("missing hiddenFromOutput");
     }
 
-    return new Policy(obj.description, obj.command, obj.baseline, Boolean(obj.hiddenFromOutput));
+    return new Policy(obj.description, obj.filePattern, obj.search, obj.baseline, Boolean(obj.hiddenFromOutput));
   }
 }

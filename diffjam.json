@@ -1,7 +1,8 @@
 {
 	"policies": {
 		"No TODOs": {
-			"command": "git grep TODO",
+			"filePattern": "*.ts",
+			"search": "TODO",
 			"description": "Don't add TODOS. DO IT NOW!",
 			"baseline": 7
 		}
