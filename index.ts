@@ -1,7 +1,7 @@
 import _ from "lodash";
 // @ts-ignore
 import meow from "meow";
-import * as configObj from "./src/config";
+import * as configFile from "./src/configFile";
 import { clientVersion } from "./src/clientVersion";
 import { actionCheck } from "./src/actions/check";
 import { actionCinch } from "./src/actions/cinch";
@@ -25,7 +25,7 @@ process.on("unhandledRejection", (err: any) => {
 
 // run!
 const run = async function (action: string, param1: any, flags: { config: any; }) {
-  await configObj.getConfig(flags.config);
+  await configFile.getConfig(flags.config);
   if (!action || action === "menu") {
     return actionMainMenu(clientVers);
   }

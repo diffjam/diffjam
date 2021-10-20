@@ -10,11 +10,6 @@ export interface Match {
 }
 type MatchDict = { [key: string]: Match[] };
 
-export const findAndCountMatches = async (filePattern: string, search: string) => {
-  const matches = await findMatches(filePattern, search);
-  return countMatches(matches);
-};
-
 export const findMatches = async (filePattern: string, search: string) => {
   const filePaths = await getPathsMatchingPattern(filePattern);
   const results: MatchDict = {};

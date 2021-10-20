@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { Policy } from "./Policy";
-import * as configObj from "./config";
-import { countMatches, findAndCountMatches, findMatches } from "./match";
+import * as configFile from "./configFile";
+import { countMatches, findMatches } from "./match";
 import { flatten } from "lodash";
 
 const RED_X = chalk.red("❌️");
@@ -55,7 +55,8 @@ export const logPolicyResult = (name: string, policy: Policy, result: any, durat
 };
 
 export const getResults = async () => {
-  const policies = configObj.getPolicies();
+  const conf = await configFile.getConfig();
+  const policies = conf.policyMap;
   const results: {[key: string]: {duration: number, measurement: number}} = {};
   const breaches: SuccessOrBreach[] = [];
   const successes: SuccessOrBreach[] = [];

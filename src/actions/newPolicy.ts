@@ -1,12 +1,12 @@
 
-import * as configObj from "../config";
-import { countMatches, findAndCountMatches, findMatches } from "../match";
+import * as configFile from "../configFile";
+import { countMatches, findMatches } from "../match";
 import { Policy } from "../Policy";
 import * as ui from "../ui";
 
 // create a policy
 export const actionNewPolicy = async (name?: string, search?: string, filePattern?: string) => {
-  configObj.ensureConfig();
+  const conf = await configFile.getConfig();
 
   if (!name) {
     name = await ui.textInput("Enter a name for this policy: ");
@@ -38,7 +38,8 @@ export const actionNewPolicy = async (name?: string, search?: string, filePatter
       `There are currently ${count} matches for that configuration. Save it?`
     )
   ) {
-    configObj.savePolicy(name, policy);
+    conf.setPolicy(name, policy);
+    configFile.writeConfig(conf);
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");

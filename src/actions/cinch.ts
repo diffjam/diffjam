@@ -1,9 +1,9 @@
 import chalk from "chalk";
 import { GREEN_CHECK, logResults } from "../log";
-import * as configObj from "../config";
+import * as configFile from "../configFile";
 
 export const actionCinch = async () => {
-  configObj.ensureConfig();
+  const config = await configFile.getConfig();
 
   const { breaches, successes } = await logResults();
 
@@ -36,10 +36,13 @@ export const actionCinch = async () => {
 
   for (const success of successes) {
     if (success.policy.isCountCinchable(success.result)) {
-      configObj.setPolicyBaseline(success.name, success.result);
+      const before = success.policy.baseline;
+      success.policy.baseline = success.result;
+      config.setPolicy(success.name, success.policy);
+      configFile.writeConfig(config);
       console.log(
         `${GREEN_CHECK} ${chalk.bold(success.name)} was just cinched from ${
-        success.policy.baseline
+        before
         } to ${chalk.bold(success.result.toString())}!`
       );
     }

@@ -1,10 +1,11 @@
 
-import * as configObj from "../config";
-import { countMatches, findAndCountMatches, findMatches } from "../match";
+import * as configFile from "../configFile";
+import { countMatches, findMatches } from "../match";
 import * as ui from "../ui";
 
 const actionPolicyDescriptionEdit = async function (name: any) {
-  const policy = configObj.getPolicy(name);
+  const conf = await configFile.getConfig();
+  const policy = conf.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -20,11 +21,12 @@ const actionPolicyDescriptionEdit = async function (name: any) {
 
   policy.description = await ui.textInput("Give a new description: ");
 
-  configObj.savePolicy(name, policy);
+  configFile.savePolicy(name, policy);
 };
 
 const actionPolicyBaselineFix = async function (name: any) {
-  const policy = configObj.getPolicy(name);
+  const conf = await configFile.getConfig();
+  const policy = conf.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -42,14 +44,15 @@ const actionPolicyBaselineFix = async function (name: any) {
 
   const oldBaseline = policy.baseline;
 
-  configObj.setPolicyBaseline(name, count);
+  configFile.setPolicyBaseline(name, count);
   console.log(
     `The baseline for that policy was changed from ${oldBaseline} to ${count}`
   );
 };
 
 const actionPolicyDelete = async function (name: any) {
-  const policy = configObj.getPolicy(name);
+  const conf = await configFile.getConfig();
+  const policy = conf.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);
@@ -65,11 +68,12 @@ const actionPolicyDelete = async function (name: any) {
     return process.exit(0);
   }
 
-  configObj.deletePolicy(`policies.${name}`);
+  configFile.deletePolicy(`policies.${name}`);
 };
 
 const actionHideFromOutput = async function (name: string) {
-  const policy = configObj.getPolicy(name);
+  const conf = await configFile.getConfig();
+  const policy = conf.getPolicy(name);
   const currentValue = policy.hiddenFromOutput;
   console.log(
     `Output for "${name}" is currently ${currentValue ? "hidden" : "not hidden"}`
@@ -79,14 +83,15 @@ const actionHideFromOutput = async function (name: string) {
     "Hide output (Check for regressions but don't show results or report metrics)": true
   });
   policy.hiddenFromOutput = menuChoice;
-  configObj.savePolicy(name, policy);
+  configFile.savePolicy(name, policy);
   console.log(
     `Output for "${name}" is now set to ${menuChoice ? "hidden" : "not hidden"}`
   );
 };
 
 export const actionPolicyModify = async (name: any) => {
-  const policy = configObj.getPolicy(name);
+  const conf = await configFile.getConfig();
+  const policy = conf.getPolicy(name);
 
   if (!policy) {
     console.error("There was no policy named: ", name);

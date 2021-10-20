@@ -3,15 +3,15 @@ import { actionCinch } from "./cinch";
 import { actionCount } from "./count";
 import { actionNewPolicy } from "./newPolicy";
 import { actionPolicyModify } from "./policyModify";
-import * as configObj from "../config";
+import * as configFile from "../configFile";
 import { logo } from "../logo";
 import * as ui from "../ui";
 import _ from "lodash";
 
 export const actionMainMenu = async (clientVers: string) => {
   console.log(logo(clientVers) + "\n");
-  configObj.ensureConfig();
-  const policyNames = configObj.getPolicyNames();
+  const config = await configFile.getConfig();
+  const policyNames = config.getPolicyNames();
   const editChoicesMap: {[key: string]: {type: string, name: string}} = {};
   policyNames.forEach((name: string) => {
     editChoicesMap[`edit "${name}"`] = {

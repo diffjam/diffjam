@@ -4,9 +4,7 @@ import axios from "axios";
 import envCi from 'env-ci';
 import gitRemoteOriginUrl from "git-remote-origin-url";
 import hostedGitInfo from "hosted-git-info";
-import fs from "fs";
-import * as configObj from "../config";
-import * as ui from "../ui";
+import * as configFile from "../configFile";
 import {gitUrlToSlug} from "../git";
 
 async function postMetrics(apiKey: string, config: any, results: {}, clientVersion: string, tags?: any) {
@@ -125,20 +123,11 @@ async function commentResults(apiKey: any, config: any, results: {}, clientVers:
   }
 }
 
-async function promptForTags () {
-  const tags = configObj.getTags();
-  if (tags.length === 0) {
-    const tagInput = await ui.textInput("Enter the name of this codebase: ");
-    tags.push(`codebase:${tagInput}`);
-    configObj.setTags(tags);
-  }
-}
-
-
 export const actionCount = async function (flags: any = {}, clientVersion: string) {
   const start = new Date();
   const { breaches, successes, results } = await logResults();
   const verbose = Boolean(flags.verbose);
+  const conf = await configFile.getConfig();
 
   if (breaches.length) {
     logCheckFailedError();
@@ -151,19 +140,6 @@ export const actionCount = async function (flags: any = {}, clientVersion: strin
     return;
   }
 
-  await promptForTags();
-  const configJson = JSON.parse(fs.readFileSync(`./diffjam.json`).toString());
-  if (
-    !configJson.tags ||
-    !Array.isArray(configJson.tags) ||
-    configJson.tags.length === 0
-  ) {
-    console.error(chalk.red("Missing tags!  Could not post metrics."));
-    console.error(
-      chalk.red("You must have one or more tags for these metrics.")
-    );
-    process.exitCode = 1;
-  }
   console.log(chalk.yellow("sending metrics to server..."));
   verbose &&
     console.log(chalk.cyan(`successes: ${JSON.stringify(successes)}`));
@@ -179,6 +155,7 @@ export const actionCount = async function (flags: any = {}, clientVersion: strin
     process.exitCode = 1;
     return;
   }
+  const configJson = {policies: conf.policyMap};
   verbose && console.log("apiKey, config, results: ", apiKey, configJson, results);
 
 

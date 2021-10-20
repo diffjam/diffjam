@@ -1,12 +1,12 @@
 
-import * as configObj from "../config";
+import * as configFile from "../configFile";
 
 export const actionInit = async function () {
-  if (!configObj.exists()) {
-    configObj.ensureConfig();
-    console.log("Created diffjam.json for diffjam configuration.");
+  if (!configFile.exists()) {
+    configFile.getConfig();
+    console.log("Created diffjam.yaml for diffjam configuration.");
   } else {
-    console.error("A diffjam.json already exists.  Skipping initialization.");
+    console.error("A diffjam.yaml already exists.  Skipping initialization.");
     process.exitCode = 1;
   }
 };
