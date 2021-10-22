@@ -7,6 +7,7 @@ export interface Match {
     number: number;
     line: string;
     match: string;
+    path: string;
 }
 type MatchDict = { [key: string]: Match[] };
 
@@ -16,7 +17,7 @@ export const findMatches = async (filePattern: string, search: string) => {
   for (const path of filePaths) {
     // TODO do these in parallel
     const contents = fs.readFileSync(path, { encoding: "utf8", flag: "r" });
-    results[path] = findInString(search, contents);
+    results[path] = findInString(path, search, contents);
   }
   return results;
 };

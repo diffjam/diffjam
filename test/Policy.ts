@@ -16,7 +16,7 @@ describe("Policy", () => {
   describe("#evaluateFileContents", () => {
     it("finds matches in a file", () => {
       const policy = new Policy("test description", "*.ts", "needle", 0);
-      const matches = policy.evaluateFileContents(`-----
+      const matches = policy.evaluateFileContents("path", `-----
                 this is a test to find
                 the needle in the
                 haystack (or maybe there

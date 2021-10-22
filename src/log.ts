@@ -1,7 +1,7 @@
 import chalk from "chalk";
 import { Policy } from "./Policy";
 import * as configFile from "./configFile";
-import { countMatches, findMatches } from "./match";
+import { countMatches, findMatches, Match } from "./match";
 import { flatten } from "lodash";
 
 const RED_X = chalk.red("❌️");
@@ -16,7 +16,7 @@ interface SuccessOrBreach {
   policy: Policy;
   result: number;
   duration: number;
-  examples: string[];
+  examples: Match[];
 }
 
 export const logResults = async () => {
@@ -67,7 +67,7 @@ export const getResults = async () => {
       const policyStart = new Date();
       const matches = await findMatches(policy.filePattern, policy.search);
       const count = countMatches(matches);
-      const examples = flatten(Object.values(matches)).map((i) => i.line).slice(0, 5);
+      const examples = flatten(Object.values(matches));
       const duration = Date.now() - policyStart.getTime();
       if (!policy.isCountAcceptable(count)) {
         breaches.push({
@@ -106,8 +106,11 @@ const logBreachError = async (breach: SuccessOrBreach) => {
     } or fewer`
   );
 
-  console.log("Last 10 examples:")
-  console.log(breach.examples.slice(0, 10).join("\n"));
+  const count = Math.min(10, breach.examples.length)
+  console.log(count > 1 ? `Violation:` : `Last ${count} examples:`)
+  console.log(breach.examples.slice(0, count).map(b => {
+    return `${b.path}:${b.number} - ${b.line}`;
+  }).join("\n"));
 
   if (breach.policy.description) {
     console.error("", chalk.magenta(breach.policy.description));

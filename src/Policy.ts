@@ -21,8 +21,8 @@ export class Policy {
     return count < this.baseline;
   }
 
-  evaluateFileContents(contents: string) {
-    return findInString(this.search, contents);
+  evaluateFileContents(path: string, contents: string) {
+    return findInString(path, this.search, contents);
   }
 
   static fromJson(obj: any) {

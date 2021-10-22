@@ -2,6 +2,6 @@ policies:
   No TODOs:
     baseline: 129
     description: Don't add TODOS. DO IT NOW!
-    filePattern: '*.ts'
+    filePattern: '**/*.ts'
     hiddenFromOutput: false
     search: TODO
