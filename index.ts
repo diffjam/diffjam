@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import _ from "lodash";
 // @ts-ignore
 import meow from "meow";

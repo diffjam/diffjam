@@ -24,6 +24,31 @@ const actionPolicyDescriptionEdit = async function (name: any) {
   configFile.savePolicy(name, policy);
 };
 
+const actionCurrentState = async function (name: any) {
+  const conf = await configFile.getConfig();
+  const policy = conf.getPolicy(name);
+
+  if (!policy) {
+    console.error("There was no policy named: ", name);
+    return process.exit(1);
+  }
+
+  const matches = await findMatches(policy.filePattern, policy.needles);
+  const count = countMatches(matches);
+  console.log("Policy: ");
+  console.log("===============================");
+  console.log("name: ", name);
+  console.log("description: ", policy.description);
+  console.log("filePattern: ", policy.filePattern);
+  console.log("search: ", policy.search);
+  console.log("baseline: ", policy.baseline);
+  console.log("Current count is: ", count);
+  console.log("matches: ");
+  console.log(matches);
+
+};
+
+
 const actionPolicyBaselineFix = async function (name: any) {
   const conf = await configFile.getConfig();
   const policy = conf.getPolicy(name);
@@ -33,7 +58,7 @@ const actionPolicyBaselineFix = async function (name: any) {
     return process.exit(1);
   }
 
-  const count = countMatches(await findMatches(policy.filePattern, policy.search));
+  const count = countMatches(await findMatches(policy.filePattern, policy.needles));
 
   if (policy.isCountAcceptable(count)) {
     console.error(
@@ -99,6 +124,7 @@ export const actionPolicyModify = async (name: any) => {
   }
 
   const modifyMenuChoice = await ui.select("Choose an action", {
+    "see current state": {type: "see_current_state"},
     delete: { type: "delete_policy" },
     "edit description": { type: "policy_description_edit" },
     "fix baseline": { type: "policy_baseline_fix" },
@@ -109,6 +135,8 @@ export const actionPolicyModify = async (name: any) => {
   });
 
   switch (modifyMenuChoice.type) {
+    case "see_current_state":
+      return actionCurrentState(name);
     case "policy_description_edit":
       return actionPolicyDescriptionEdit(name);
     case "delete_policy":

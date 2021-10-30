@@ -65,7 +65,7 @@ export const getResults = async () => {
     Object.keys(policies).map(async name => {
       const policy = policies[name];
       const policyStart = new Date();
-      const matches = await findMatches(policy.filePattern, policy.search);
+      const matches = await findMatches(policy.filePattern, policy.needles);
       const count = countMatches(matches);
       const examples = flatten(Object.values(matches));
       const duration = Date.now() - policyStart.getTime();

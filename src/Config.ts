@@ -1,16 +1,16 @@
 import { dump, load } from "js-yaml";
 import { Policy } from "./Policy";
 
-
+type PolicyMap = {[name: string]: Policy};
 
 export class Config {
-    constructor (public policyMap: {[name: string]: Policy}) {
+    constructor (public policyMap: PolicyMap) {
 
     }
 
     static fromYaml(yaml: string) {
         const obj = load(yaml) as any;
-        const policyMap: {[name: string]: Policy} = {};
+        const policyMap: PolicyMap = {};
         if (!obj.hasOwnProperty("policies")) {
             return new Config(policyMap);
         }
@@ -37,15 +37,17 @@ export class Config {
     }
 
     toJson () {
+        const policies: {[key: string]: unknown} = {};
+        for (const key of Object.keys(this.policyMap)){
+            policies[key] = this.policyMap[key].toJson();
+        }
         return {
-            policies: this.policyMap,
+            policies,
         }        
     }
 
     toYaml (): string {
-        const object = {
-            policies: this.policyMap
-        };
+        const object = this.toJson();
         return dump(object, {
             'styles': {
               '!!null': 'canonical' // dump null as ~

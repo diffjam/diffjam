@@ -133,7 +133,7 @@ export const actionCount = async function (flags: any = {}, clientVersion: strin
     logCheckFailedError();
   }
 
-  console.log("flags: ", flags);
+  // console.log("flags: ", flags);
   if (!flags.record && !flags.ci) {
 
     console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));

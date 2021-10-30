@@ -11,7 +11,7 @@ export interface Match {
 }
 type MatchDict = { [key: string]: Match[] };
 
-export const findMatches = async (filePattern: string, search: string) => {
+export const findMatches = async (filePattern: string, search: RegExp[]) => {
   const filePaths = await getPathsMatchingPattern(filePattern);
   const results: MatchDict = {};
   for (const path of filePaths) {

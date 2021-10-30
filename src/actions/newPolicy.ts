@@ -4,6 +4,9 @@ import { countMatches, findMatches } from "../match";
 import { Policy } from "../Policy";
 import * as ui from "../ui";
 
+// @ts-ignore
+import toRegex from "to-regex";
+
 // create a policy
 export const actionNewPolicy = async (name?: string, search?: string, filePattern?: string) => {
   const conf = await configFile.getConfig();
@@ -24,12 +27,12 @@ export const actionNewPolicy = async (name?: string, search?: string, filePatter
     );
   }
 
-  const policy = new Policy("", filePattern, search, 0);
+  const policy = new Policy("", filePattern, [search], 0);
 
   policy.description = await ui.textInput(
     "Give a description for this policy: "
   );
-  const count = countMatches(await findMatches(policy.filePattern, policy.search));
+  const count = countMatches(await findMatches(policy.filePattern, policy.needles));
 
   policy.baseline = count;
 

@@ -67,6 +67,8 @@ const ignoreMore = (f: GlobFile) => {
   if (f.isDotfile() || f.basename === "diffjam.yaml") {
     f.exclude = true;
   }
+//   console.log("f: ", f);
+  
   return f;
 };
 
@@ -76,6 +78,8 @@ export const getPathsMatchingPattern = async (patterns: string) => {
     const files = await glob
         .use(ignoreMore)
         .readdirSync(patterns, { withFileTypes: true }) as string[];
+    // console.log("files: ", files);
+    //    throw new Error("files ^^^^^^^^") 
     
     const retval = files.filter((file) => {return file !== "diffjam.yaml";});
     
