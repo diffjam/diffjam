@@ -3,6 +3,8 @@ import { fs } from "mz";
 import { findInString } from "./findInString";
 import { getPathsMatchingPattern } from "./getPathsMatchingPattern";
 
+const cwd = process.cwd()
+
 export interface Match {
     number: number;
     line: string;
@@ -11,7 +13,7 @@ export interface Match {
 }
 type MatchDict = { [key: string]: Match[] };
 
-export const findMatches = async (filePattern: string, search: RegExp[], dir: string = process.cwd()) => {
+export const findMatches = async (filePattern: string, search: RegExp[], dir: string = cwd) => {
   // const dir = process.cwd();
   const filePaths = await getPathsMatchingPattern(dir, filePattern);
   const results: MatchDict = {};
