@@ -41,6 +41,7 @@ const actionCurrentState = async function (name: any) {
   console.log("description: ", policy.description);
   console.log("filePattern: ", policy.filePattern);
   console.log("search: ", policy.search);
+  console.log("regexes: ", policy.needles);
   console.log("baseline: ", policy.baseline);
   console.log("Current count is: ", count);
   console.log("matches: ");

@@ -6,8 +6,9 @@ import gitRemoteOriginUrl from "git-remote-origin-url";
 import hostedGitInfo from "hosted-git-info";
 import * as configFile from "../configFile";
 import {gitUrlToSlug} from "../git";
+import { ConfigJson } from "../Config";
 
-async function postMetrics(apiKey: string, config: any, results: {}, clientVersion: string, tags?: any) {
+async function postMetrics(apiKey: string, config: ConfigJson, results: any, clientVersion: string, tags?: any) {
   let response;
   const body = {
     apiKey,
@@ -155,7 +156,7 @@ export const actionCount = async function (flags: any = {}, clientVersion: strin
     process.exitCode = 1;
     return;
   }
-  const configJson = {policies: conf.policyMap};
+  const configJson = conf.toJson();
   verbose && console.log("apiKey, config, results: ", apiKey, configJson, results);
 
 

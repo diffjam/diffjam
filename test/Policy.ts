@@ -13,6 +13,28 @@ describe("Policy", () => {
     });
   });
 
+  describe("#fromJson", () => {
+    it("makes a regular expression out of searches with a regex: prefix", () => {
+      const p = Policy.fromJson({
+        baseline: 0,
+        filePattern: "**/*.ts",
+        search: "regex:[a-z]{4}",
+        description: "test",
+      });
+      expect(p.needles[0]).toEqual(/[a-z]{4}/);
+    });
+    it("makes a regular expressions out of plain text searches", () => {
+      const p = Policy.fromJson({
+        baseline: 0,
+        filePattern: "**/*.ts",
+        search: " R.",
+        description: "test",
+      });
+      expect(p.needles[0].test("asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
+      expect(p.needles[0].test("asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
+    });
+  });
+
   describe("#evaluateFileContents", () => {
     it("finds matches in a file", () => {
       const policy = new Policy("test description", "*.ts", ["needle"], 0);

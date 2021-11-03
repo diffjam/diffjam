@@ -1,12 +1,28 @@
 import { isBoolean, isNumber, isString } from "lodash";
 import { findInString } from "./findInString";
 
+const escapeStringRegexp = (string: string) => {
+  if (typeof string !== "string") {
+    throw new TypeError("Expected a string");
+  }
 
-// @ts-ignore
-import toRegex from "to-regex";
+  // Escape characters with special meaning either inside or outside character sets.
+  // Use a simple backslash escape when it’s always valid, and a `\xnn` escape when the simpler form would be disallowed by Unicode patterns’ stricter grammar.
+  return string.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&").replace(/-/g, "\\x2d");
+};
+
+import { hasProp } from "./hasProp";
 
 export type StringOrRegexp = string | RegExp;
 const regexPrefix = "regex:";
+
+export interface PolicyJson {
+    description: string;
+    filePattern: string;
+    search: string[];
+    baseline: number;
+    hiddenFromOutput: boolean;
+}
 
 export class Policy {
   public needles: RegExp[] = [];
@@ -20,15 +36,20 @@ export class Policy {
   ) {
     this.needles = this.search.map((i: string) => {
       if (!i.startsWith(regexPrefix)){
-        return toRegex(i, {contains: true});
+        return new RegExp(escapeStringRegexp(i));
       }
       const startIndex = regexPrefix.length;
       const regexString = i.slice(startIndex);
       return new RegExp(regexString);
     })
+    this.description = description;
+    this.filePattern = filePattern;
+    this.search = search;
+    this.baseline = baseline;
+    this.hiddenFromOutput = hiddenFromOutput;
   }
 
-  toJson() {
+  toJson(): PolicyJson {
     return {
       description: this.description,
       filePattern: this.filePattern,
@@ -56,11 +77,11 @@ export class Policy {
       throw new Error("input was empty");
     }
 
-    if (!obj.hasOwnProperty("baseline") || !isNumber(obj.baseline)) {
+    if (!hasProp(obj, "baseline") || !isNumber(obj.baseline)) {
       throw new Error("missing baseline");
     }
 
-    if (!obj.hasOwnProperty("search") || !isString(obj.search)) {
+    if (!hasProp(obj, "search") || !isString(obj.search)) {
       if (Array.isArray(obj.search) && !obj.search.every(isString)){
         console.error("obj: ", obj);
         throw new Error("missing search");
@@ -71,19 +92,18 @@ export class Policy {
       obj.search = [obj.search];
     }
 
-    if (!obj.hasOwnProperty("filePattern") || !isString(obj.filePattern)) {
+    if (!hasProp(obj, "filePattern") || !isString(obj.filePattern)) {
       throw new Error("missing filePattern");
     }
 
-    if (!obj.hasOwnProperty("description") || !isString(obj.description)) {
+    if (!hasProp(obj, "description") || !isString(obj.description)) {
       throw new Error("missing description");
     }
 
-    if (obj.hasOwnProperty("hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
+    if (hasProp(obj, "hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
       console.error("obj: ", obj);
       throw new Error("missing hiddenFromOutput");
     }
-    
     return new Policy(obj.description, obj.filePattern, obj.search, obj.baseline, Boolean(obj.hiddenFromOutput));
   }
 }

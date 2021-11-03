@@ -94,6 +94,13 @@
   resolved "https://registry.yarnpkg.com/@types/env-ci/-/env-ci-3.1.1.tgz#e1ff1b648c01b0f5202de5633c00f711f0f3ac03"
   integrity sha512-JuX+LHsvhktApmZxmBrG458kfSvPAvs2Kqhyrow3IKtDsbcRco7NFgpsNthjp8EQxKA6PMw3DrY/IH8ZAuTYlQ==
 
+"@types/escape-string-regexp@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.npmjs.org/@types/escape-string-regexp/-/escape-string-regexp-2.0.1.tgz#05d249ffde63aba70d1dfdea1e0cad16dcec9629"
+  integrity sha512-QbTY9C4ZdLxqnJ+2vo8IBxMXcC3t//eVTNpnQVkTlVYtuQyZkUTNbFAwtXZ0qJ+YFpib2+raDMtYWh8hBfhlgQ==
+  dependencies:
+    escape-string-regexp "*"
+
 "@types/findup-sync@^4.0.1":
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/@types/findup-sync/-/findup-sync-4.0.1.tgz#b818ce8bc0cad0a0814f3941bcd203f77f80f381"
@@ -202,6 +209,13 @@
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/@types/parse-gitignore/-/parse-gitignore-1.0.0.tgz#782b2b6179cef4daaf9b8bd312bfe796fdc8aa18"
   integrity sha512-GCL7NIxhUzJ1M5bp68T8DtDVTbQdw93MPIIII+YASs3icSozMEG9ZjX7pp7ldRJrVgrRtJBwy+/g+aBzCIttlg==
+  dependencies:
+    "@types/node" "*"
+
+"@types/progress@^2.0.5":
+  version "2.0.5"
+  resolved "https://registry.npmjs.org/@types/progress/-/progress-2.0.5.tgz#6e0febf3a82cc0ffdc1cebb4e56d6949fd108775"
+  integrity sha512-ZYYVc/kSMkhH9W/4dNK/sLNra3cnkfT2nJyOAIDY+C2u6w72wa0s1aXAezVtbTsnN8HID1uhXCrLwDE2ZXpplg==
   dependencies:
     "@types/node" "*"
 
@@ -875,6 +889,11 @@ es-to-primitive@^1.2.1:
     is-callable "^1.1.4"
     is-date-object "^1.0.1"
     is-symbol "^1.0.2"
+
+escape-string-regexp@*, escape-string-regexp@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.npmjs.org/escape-string-regexp/-/escape-string-regexp-5.0.0.tgz#4683126b500b61762f2dbebace1806e8be31b1c8"
+  integrity sha512-/veY75JbMK4j1yjvuUxuVsiS/hr/4iHs9FTT6cgTexxdE0Ly/glccBAkloH/DofkjRbZU3bnoj38mOmhkZ0lHw==
 
 escape-string-regexp@1.0.5, escape-string-regexp@^1.0.2, escape-string-regexp@^1.0.5:
   version "1.0.5"
@@ -2809,7 +2828,7 @@ process-nextick-args@~2.0.0:
   resolved "https://registry.yarnpkg.com/process-nextick-args/-/process-nextick-args-2.0.1.tgz#7820d9b16120cc55ca9ae7792680ae7dba6d7fe2"
   integrity sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==
 
-progress@^2.0.0:
+progress@^2.0.0, progress@^2.0.3:
   version "2.0.3"
   resolved "https://registry.npmjs.org/progress/-/progress-2.0.3.tgz#7e8cf8d8f5b8f239c1bc68beb4eb78567d572ef8"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==

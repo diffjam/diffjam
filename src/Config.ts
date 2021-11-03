@@ -1,7 +1,11 @@
 import { dump, load } from "js-yaml";
-import { Policy } from "./Policy";
+import { Policy, PolicyJson } from "./Policy";
 
 type PolicyMap = {[name: string]: Policy};
+
+export interface ConfigJson {
+    policies: {[key: string]: PolicyJson};
+}
 
 export class Config {
     constructor (public policyMap: PolicyMap) {
@@ -36,14 +40,12 @@ export class Config {
         return Object.keys(this.policyMap);
     }
 
-    toJson () {
-        const policies: {[key: string]: unknown} = {};
+    toJson (): ConfigJson {
+        const retval: ConfigJson = { policies: {}};
         for (const key of Object.keys(this.policyMap)){
-            policies[key] = this.policyMap[key].toJson();
+            retval.policies[key] = this.policyMap[key].toJson();
         }
-        return {
-            policies,
-        }        
+        return retval;
     }
 
     toYaml (): string {
