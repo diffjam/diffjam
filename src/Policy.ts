@@ -1,20 +1,20 @@
 import { isBoolean, isNumber, isString } from "lodash";
 import { findInString } from "./findInString";
 
-const escapeStringRegexp = (string: string) => {
-  if (typeof string !== "string") {
-    throw new TypeError("Expected a string");
-  }
-
-  // Escape characters with special meaning either inside or outside character sets.
-  // Use a simple backslash escape when it’s always valid, and a `\xnn` escape when the simpler form would be disallowed by Unicode patterns’ stricter grammar.
-  return string.replace(/[|\\{}()[\]^$+*?.]/g, "\\$&").replace(/-/g, "\\x2d");
+// eslint-disable-next-line arrow-body-style
+const escapeStringRegexp = (str: string) => {
+  return str
+    .replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
+    .replace(/-/g, "\\x2d");
 };
 
 import { hasProp } from "./hasProp";
+import { ReverseRegExp } from "./ReverseRegExp";
 
 export type StringOrRegexp = string | RegExp;
+export type NeedleArray = Array<RegExp | ReverseRegExp>;
 const regexPrefix = "regex:";
+const inversePrefix = "-:";
 
 export interface PolicyJson {
     description: string;
@@ -25,7 +25,7 @@ export interface PolicyJson {
 }
 
 export class Policy {
-  public needles: RegExp[] = [];
+  public needles: NeedleArray = [];
 
   constructor(
     public description: string,
@@ -34,14 +34,7 @@ export class Policy {
     public baseline: number,
     public hiddenFromOutput: boolean = false,
   ) {
-    this.needles = this.search.map((i: string) => {
-      if (!i.startsWith(regexPrefix)){
-        return new RegExp(escapeStringRegexp(i));
-      }
-      const startIndex = regexPrefix.length;
-      const regexString = i.slice(startIndex);
-      return new RegExp(regexString);
-    })
+    this.needles = Policy.searchConfigToRegexes(this.search);
     this.description = description;
     this.filePattern = filePattern;
     this.search = search;
@@ -72,7 +65,25 @@ export class Policy {
     return findInString(path, this.needles, contents);
   }
 
-  static fromJson(obj: any) {
+  static searchConfigToRegexes(search: string[]): NeedleArray {
+    const needles = search.map((i: string) => {
+      if (!i.startsWith(regexPrefix) && !i.startsWith(inversePrefix)){
+        return new RegExp(escapeStringRegexp(i));
+      }
+      if (i.startsWith(inversePrefix)){
+        const startIndex = inversePrefix.length;
+        const inverseString = i.slice(startIndex);
+        return new ReverseRegExp(escapeStringRegexp(inverseString));
+      }
+      const startIndex = regexPrefix.length;
+      const regexString = i.slice(startIndex);
+      return new RegExp(regexString);
+    });
+    return needles;
+
+  }
+
+  static fromJson(obj: any): Policy {
     if (!obj) {
       throw new Error("input was empty");
     }

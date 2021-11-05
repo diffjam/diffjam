@@ -13,25 +13,42 @@ describe("Policy", () => {
     });
   });
 
-  describe("#fromJson", () => {
-    it("makes a regular expression out of searches with a regex: prefix", () => {
-      const p = Policy.fromJson({
-        baseline: 0,
-        filePattern: "**/*.ts",
-        search: "regex:[a-z]{4}",
-        description: "test",
+  describe("#searchConfigToRegexes", () => {
+
+    describe("with regex: prefix", () => {
+      it("makes a regular expression out of searches", () => {
+        const needles = Policy.searchConfigToRegexes(
+          ["regex:[a-z]{4}"]
+        );
+        expect(needles[0]).toEqual(/[a-z]{4}/);
       });
-      expect(p.needles[0]).toEqual(/[a-z]{4}/);
     });
-    it("makes a regular expressions out of plain text searches", () => {
-      const p = Policy.fromJson({
-        baseline: 0,
-        filePattern: "**/*.ts",
-        search: " R.",
-        description: "test",
+
+    describe("with -: prefix", () => {
+      it("creates a negating / inverse search", () => {
+        const needles = Policy.searchConfigToRegexes(
+          ["-:asdf"]
+        );
+        expect(needles[0].test("asdf")).toEqual(false);
+        expect(needles[0].test("asd1")).toEqual(true);
       });
-      expect(p.needles[0].test("asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
-      expect(p.needles[0].test("asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
+    });
+
+    describe("with no prefix", () => {
+      it("makes a regular expressions out of plain text searches", () => {
+        const needles = Policy.searchConfigToRegexes(
+          [" R."]
+        );
+        expect(needles[0].test("asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
+        expect(needles[0].test("asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
+      });
+      it("makes a regular expressions out of plain text searches", () => {
+        const needles = Policy.searchConfigToRegexes(
+          [" R."]
+        );
+        expect(needles[0].test("asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
+        expect(needles[0].test("asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
+      });
     });
   });
 

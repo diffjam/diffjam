@@ -4,9 +4,6 @@ import { countMatches, findMatches } from "../match";
 import { Policy } from "../Policy";
 import * as ui from "../ui";
 
-// @ts-ignore
-import toRegex from "to-regex";
-
 // create a policy
 export const actionNewPolicy = async (name?: string, search?: string, filePattern?: string) => {
   const conf = await configFile.getConfig();
