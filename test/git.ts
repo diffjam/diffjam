@@ -1,5 +1,5 @@
-const gitUrlToSlug = require("../git").gitUrlToSlug;
-const expect = require("expect");
+const gitUrlToSlug = require("../src/git").gitUrlToSlug;
+import expect from "expect";
 
 describe("gitUrlToSlug", () => {
     it("returns slug when given an input url", () => {

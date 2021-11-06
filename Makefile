@@ -8,7 +8,7 @@ dist: clean
 
 prepublish:
 	# prepublish targets
-	# dist
+	yarn build
 
 lint:
 	./node_modules/.bin/eslint '*.js' '**/*.js'
