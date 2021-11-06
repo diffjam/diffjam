@@ -12,7 +12,7 @@ import { hasProp } from "./hasProp";
 import { ReverseRegExp } from "./ReverseRegExp";
 
 export type StringOrRegexp = string | RegExp;
-export type NeedleArray = Array<RegExp | ReverseRegExp>;
+export type Needle = RegExp | ReverseRegExp | string;
 const regexPrefix = "regex:";
 const inversePrefix = "-:";
 
@@ -24,8 +24,15 @@ export interface PolicyJson {
     hiddenFromOutput: boolean;
 }
 
+export const testNeedle = (n: Needle, haystack: string): boolean => {
+  if (isString(n)) {
+    return haystack.includes(n);
+  }
+  return n.test(haystack);
+}
+
 export class Policy {
-  public needles: NeedleArray = [];
+  public needles: Needle[] = [];
 
   constructor(
     public description: string,
@@ -34,7 +41,7 @@ export class Policy {
     public baseline: number,
     public hiddenFromOutput: boolean = false,
   ) {
-    this.needles = Policy.searchConfigToRegexes(this.search);
+    this.needles = Policy.searchConfigToNeedles(this.search);
     this.description = description;
     this.filePattern = filePattern;
     this.search = search;
@@ -65,9 +72,11 @@ export class Policy {
     return findInString(path, this.needles, contents);
   }
 
-  static searchConfigToRegexes(search: string[]): NeedleArray {
+  static searchConfigToNeedles(search: string[]): Needle[] {
+    // optimization? inverse strings don't need to be regexes
     const needles = search.map((i: string) => {
       if (!i.startsWith(regexPrefix) && !i.startsWith(inversePrefix)){
+        // return i;
         return new RegExp(escapeStringRegexp(i));
       }
       if (i.startsWith(inversePrefix)){

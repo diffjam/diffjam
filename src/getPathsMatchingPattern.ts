@@ -115,21 +115,25 @@ export const filterFile = (basePath: string, includePatterns: string, ignorePatt
     return false;
   };
 
-
+const cachedPaths: {[key: string]: string[]} = {};
 
 export const getPathsMatchingPattern = async (basePath: string, includePatterns: string) => {
-  // console.log("dir: ", basePath);
-  // console.log("patterns: ", patterns);
-  const ignorePatterns = getIgnorePatterns();
+  if (!cachedPaths[includePatterns]) {
+    // console.log("dir: ", basePath);
+    // console.log("patterns: ", patterns);
+    const ignorePatterns = getIgnorePatterns();
 
-  // fdir's globbing just seems broken, so we implement our own in filterFile()
-  const files = (await new fdir()
-    .withBasePath()
-    .filter((path: string, isDirectory: boolean) => filterFile(basePath, includePatterns, ignorePatterns, path, isDirectory))
-    .exclude((dirName: string, dirPath: string) => excludeDirectory(cwd, ignorePatterns, dirName, dirPath))
-    .withErrors()
-    .crawl(basePath)
-    .withPromise()) as string[];
+    // fdir's globbing just seems broken, so we implement our own in filterFile()
+    cachedPaths[includePatterns] = (await new fdir()
+      .withBasePath()
+      .filter((path: string, isDirectory: boolean) =>
+        filterFile(basePath, includePatterns, ignorePatterns, path, isDirectory),
+      )
+      .exclude((dirName: string, dirPath: string) => excludeDirectory(cwd, ignorePatterns, dirName, dirPath))
+      .withErrors()
+      .crawl(basePath)
+      .withPromise()) as string[];
+  }
 
-  return files;
+  return cachedPaths[includePatterns];
 };

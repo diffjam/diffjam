@@ -3,7 +3,7 @@ import * as configFile from "../configFile";
 import { countMatches, findMatches } from "../match";
 import * as ui from "../ui";
 
-const actionPolicyDescriptionEdit = async function (name: any) {
+const actionPolicyDescriptionEdit = async function (name: string) {
   const conf = await configFile.getConfig();
   const policy = conf.getPolicy(name);
 
@@ -24,7 +24,7 @@ const actionPolicyDescriptionEdit = async function (name: any) {
   configFile.savePolicy(name, policy);
 };
 
-const actionCurrentState = async function (name: any) {
+const actionCurrentState = async function (name: string) {
   const conf = await configFile.getConfig();
   const policy = conf.getPolicy(name);
 
@@ -50,7 +50,7 @@ const actionCurrentState = async function (name: any) {
 };
 
 
-const actionPolicyBaselineFix = async function (name: any) {
+const actionPolicyBaselineFix = async function (name: string) {
   const conf = await configFile.getConfig();
   const policy = conf.getPolicy(name);
 
@@ -76,7 +76,7 @@ const actionPolicyBaselineFix = async function (name: any) {
   );
 };
 
-const actionPolicyDelete = async function (name: any) {
+const actionPolicyDelete = async function (name: string) {
   const conf = await configFile.getConfig();
   const policy = conf.getPolicy(name);
 
@@ -115,7 +115,7 @@ const actionHideFromOutput = async function (name: string) {
   );
 };
 
-export const actionPolicyModify = async (name: any) => {
+export const actionPolicyModify = async (name: string) => {
   const conf = await configFile.getConfig();
   const policy = conf.getPolicy(name);
 

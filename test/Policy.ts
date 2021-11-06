@@ -1,5 +1,6 @@
-import { Policy } from "../src/Policy";
+import { Policy, testNeedle } from "../src/Policy";
 import expect from "expect";
+import { isString } from "lodash";
 
 describe("Policy", () => {
   describe("#constructor", () => {
@@ -17,7 +18,7 @@ describe("Policy", () => {
 
     describe("with regex: prefix", () => {
       it("makes a regular expression out of searches", () => {
-        const needles = Policy.searchConfigToRegexes(
+        const needles = Policy.searchConfigToNeedles(
           ["regex:[a-z]{4}"]
         );
         expect(needles[0]).toEqual(/[a-z]{4}/);
@@ -26,28 +27,29 @@ describe("Policy", () => {
 
     describe("with -: prefix", () => {
       it("creates a negating / inverse search", () => {
-        const needles = Policy.searchConfigToRegexes(
+        const needles = Policy.searchConfigToNeedles(
           ["-:asdf"]
         );
-        expect(needles[0].test("asdf")).toEqual(false);
-        expect(needles[0].test("asd1")).toEqual(true);
+        if (isString(needles[0])) throw new Error("it's a string");
+        expect(testNeedle(needles[0], "asdf")).toEqual(false);
+        expect(testNeedle(needles[0], "asd1")).toEqual(true);
       });
     });
 
     describe("with no prefix", () => {
       it("makes a regular expressions out of plain text searches", () => {
-        const needles = Policy.searchConfigToRegexes(
+        const needles = Policy.searchConfigToNeedles(
           [" R."]
         );
-        expect(needles[0].test("asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
-        expect(needles[0].test("asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
+        expect(testNeedle(needles[0], "asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
+        expect(testNeedle(needles[0], "asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
       });
       it("makes a regular expressions out of plain text searches", () => {
-        const needles = Policy.searchConfigToRegexes(
+        const needles = Policy.searchConfigToNeedles(
           [" R."]
         );
-        expect(needles[0].test("asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
-        expect(needles[0].test("asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
+        expect(testNeedle(needles[0], "asdf asd fdsf R. asdfasdfdsf")).toEqual(true);
+        expect(testNeedle(needles[0], "asdf asd fdsf Rasdfasdfdsf")).toEqual(false);
       });
     });
   });
