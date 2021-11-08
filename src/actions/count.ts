@@ -7,8 +7,10 @@ import hostedGitInfo from "hosted-git-info";
 import * as configFile from "../configFile";
 import {gitUrlToSlug} from "../git";
 import { ConfigJson } from "../Config";
+import { ResultMap } from "../getResults";
+import { hasProp } from "../hasProp";
 
-async function postMetrics(apiKey: string, config: ConfigJson, results: any, clientVersion: string, tags?: any) {
+async function postMetrics(apiKey: string, config: ConfigJson, results: ResultMap, clientVersion: string, tags?: any) {
   let response;
   const body = {
     apiKey,
@@ -53,7 +55,7 @@ async function postMetrics(apiKey: string, config: ConfigJson, results: any, cli
 //   [2020-05-03T16:57:29.737Z]   slug: 'classdojo/api' }
 
 
-async function commentResults(apiKey: any, config: any, results: {}, clientVers: string, tags?: any) {
+async function commentResults(apiKey: string, config: ConfigJson, results: ResultMap, clientVers: string, tags?: any) {
   const env: any = envCi();
   const { name, service, commit, isPr, pr } = env;
   let { branch, slug, prBranch } = env;
@@ -107,24 +109,32 @@ async function commentResults(apiKey: any, config: any, results: {}, clientVers:
   try {
     response = await axios.post(`https://diffjam.com/api/ci`, body);
     if (response.status < 200 || response.status > 299) {
-      throw new Error(`Non-2xx response from diffjam.com: ${response.status}`);
+      console.log(`There was a non-2xx response from diffjam.com: ${response.status}`);
+      console.log("response.data: ", response.data);
     }
-  } catch (ex: any) {
-    if (ex.response && ex.response.status === 400) {
+  } catch (ex) {
+    if (hasProp(ex, "response") && hasProp(ex.response, "status") && ex.response.status === 400) {
       // This is an expected error. Something is wrong (probably with the configuration);
       console.error(
         chalk.red.bold("The error reported an issue with your configuration")
       );
-      console.error(chalk.red(JSON.stringify(ex.response.data)));
+      hasProp(ex.response, "data") && console.error(chalk.red(JSON.stringify(ex.response.data)));
     } else {
       console.log("There was some error hitting diffjam.com: ", ex);
-      console.log("ex.request.data: ", ex.request.data);
-      console.log("ex.response.data: ", ex.response.data);
+      hasProp(ex, "request") && hasProp(ex.request, "data") && console.log("ex.request.data: ", ex.request.data);
+      hasProp(ex, "response") && hasProp(ex.response, "data") && console.log("ex.response.data: ", ex.response.data);
     }
   }
 }
 
-export const actionCount = async function (flags: any = {}, clientVersion: string) {
+export interface Flags {
+  record?: boolean;
+  ci?: boolean;
+  verbose?: boolean;
+  config?: string;
+}
+
+export const actionCount = async function (flags: Flags = {}, clientVersion: string) {
   const start = new Date();
   const { breaches, successes, results } = await logResults();
   const verbose = Boolean(flags.verbose);

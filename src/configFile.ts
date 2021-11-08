@@ -5,11 +5,11 @@ let config: Config;
 const defaultFilePath = './diffjam.yaml';
 
 export async function exists(file = defaultFilePath){
-  return await fileExists(file);
+  return fileExists(file);
 }
 
 export async function getConfig(file = defaultFilePath): Promise<Config> {
-  if (Boolean(config)) {
+  if (config) {
     return config;
   }
   const exists = await fileExists(file);
