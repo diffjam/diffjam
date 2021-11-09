@@ -1,6 +1,7 @@
 import { flatten, compact } from "lodash";
 import { Config } from "./Config";
 import * as configFile from "./configFile";
+import { pathMatchesPatterns } from "./getPathsMatchingPattern";
 import { findFirstNeedle, Needle, Policy, testNeedle } from "./Policy";
 
 interface FileBreach {
@@ -55,7 +56,7 @@ const findPolicyBreachesInString = (policy: Policy, haystack: string): FileBreac
 };
 
 // used by vs-code plugin
-export const findBreachesInText = async (text: string, conf?: Config): Promise<FileBreach[]> => {
+export const findBreachesInText = async (filePath: string, text: string, conf?: Config): Promise<FileBreach[]> => {
   if (!conf) {
     conf = await configFile.getConfig();
   }
@@ -63,6 +64,9 @@ export const findBreachesInText = async (text: string, conf?: Config): Promise<F
   const fileBreaches: FileBreach[][] = [];
   for (const policyName in policies) {
       const policy = policies[policyName];
+      if (!pathMatchesPatterns(filePath, [policy.filePattern])) {
+        continue;
+      }
       const policyBreaches = findPolicyBreachesInString(policy, text);
       fileBreaches.push(policyBreaches);
   }
