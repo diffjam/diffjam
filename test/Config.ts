@@ -4,7 +4,7 @@ import expect from "expect";
 
 describe("Config", () => {
     describe("#fromYaml", () => {
-        it ("loads data from yaml", () => {
+        it("loads data from yaml", () => {
             const yaml = 
 `policies:
   myPolicy:
@@ -24,7 +24,7 @@ describe("Config", () => {
         })
     });
     describe("#getPolicy", () => {
-        it ("returns the policy by name", () => {
+        it("returns the policy by name", () => {
             const myOtherPolicy = new Policy("description", "*.ts", ["TODO"], 0)
             const conf = new Config({
                 myPolicy: new Policy("description", "*.ts", ["TODO"], 0),
@@ -34,7 +34,7 @@ describe("Config", () => {
         });
     });
     describe("#deletePolicy", () => {
-        it ("removes the policy by name", () => {
+        it("removes the policy by name", () => {
             const myOtherPolicy = new Policy("description", "*.ts", ["TODO"], 0)
             const conf = new Config({
                 myPolicy: new Policy("description", "*.ts", ["TODO"], 0),
@@ -45,7 +45,7 @@ describe("Config", () => {
         });
     });
     describe("#setPolicy", () => {
-        it ("sets the policy by name", () => {
+        it("sets the policy by name", () => {
             const myOtherPolicy = new Policy("description", "*.ts", ["TODO"], 0)
             const conf = new Config({
                 myPolicy: new Policy("description", "*.ts", ["TODO"], 0),
@@ -55,7 +55,7 @@ describe("Config", () => {
         });
     });
     describe("#getPolicyNames", () => {
-        it ("returns the policy names", () => {
+        it("returns the policy names", () => {
             const conf = new Config({
                 myPolicy: new Policy("description", "*.ts", ["TODO"], 0),
                 myOtherPolicy: new Policy("description", "*.ts", ["TODO"], 0)
@@ -64,7 +64,7 @@ describe("Config", () => {
         });
     });
     describe("#toYaml", () => {
-        it ("serializes a basic config to yaml", () => {
+        it("serializes a basic config to yaml", () => {
             const conf = new Config({
                 myPolicy: new Policy("description", "*.ts", ["TODO"], 0)
             });

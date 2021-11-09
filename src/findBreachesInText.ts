@@ -36,7 +36,7 @@ const findPolicyBreachesInString = (policy: Policy, haystack: string): FileBreac
   const matches: FileBreach[] = compact(
     lines.map((line, i) => {
       const lineNumber = i + 1;
-      const found = findFirstNeedle(needle, haystack);
+      const found = findFirstNeedle(needle, line);
       if (found) {
         return {
           found,
