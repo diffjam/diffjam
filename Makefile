@@ -2,6 +2,7 @@
 
 clean:
 	rm -rf dist
+	rm -rf lib
 
 dist: clean
 	./publish-executables.sh

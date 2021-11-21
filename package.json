@@ -1,9 +1,9 @@
 {
   "name": "diffjam",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "description": "cli for diffjam.com",
   "scripts": {
-    "build": "tsc",
+    "build": "make clean && tsc",
     "test": "make test",
     "prepublishOnly": "make prepublish",
     "start": "ts-node index.ts"
