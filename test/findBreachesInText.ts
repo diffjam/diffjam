@@ -3,7 +3,7 @@ import { findBreachesInText } from "../src/findBreachesInText";
 import { Policy } from "../src/Policy";
 import expect from "expect";
 
-describe.only("#findBreachesInText", () => {
+describe("#findBreachesInText", () => {
     it("can find a policy in a multi-line text", async () => {
         const conf = new Config({"TODO": new Policy("no more TODOs", "**/*.ts", ["TODO"], 0)});
         const breaches = await findBreachesInText("asdf.ts", "this\nis\na\n // TODO later \ntest", conf);
