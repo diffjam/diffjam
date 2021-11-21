@@ -51,7 +51,7 @@ export const findInString = (path: string, needles: Needle[], haystack: string):
       }
 
       // regexp
-      const matches = ((needle as RegExp).exec(line)) || [];
+      const matches = needle.exec(line) || [];
       const match = matches[0];
       const retval: Match = {
         line: line,
@@ -62,6 +62,9 @@ export const findInString = (path: string, needles: Needle[], haystack: string):
       matchArray.push(retval);
     }
   });
-  return findInMatches(needles, matchArray);
+  if (needles.length === 1 || matchArray.length === 0){
+      return matchArray;
+  }
+  return findInMatches(needles.slice(1), matchArray);
 };
 

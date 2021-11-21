@@ -50,10 +50,12 @@ export const getPolicyResults = async (name: string, policy: Policy) => {
   };
 };
 
+export type ResultMap = {[key: string]: {duration: number, measurement: number}};
+
 export const getResults = async (ticker: ThingWithTick) => {
   const conf = await configFile.getConfig();
   const policies = conf.policyMap;
-  const results: {[key: string]: {duration: number, measurement: number}} = {};
+  const results: ResultMap = {};
   const breaches: Array<SuccessOrBreach[]> = [];
   const successes: Array<SuccessOrBreach[]> = [];
 

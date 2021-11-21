@@ -1,4 +1,5 @@
 import { dump, load } from "js-yaml";
+import { hasProp } from "./hasProp";
 import { Policy, PolicyJson } from "./Policy";
 
 type PolicyMap = {[name: string]: Policy};
@@ -15,7 +16,7 @@ export class Config {
     static fromYaml(yaml: string) {
         const obj = load(yaml) as any;
         const policyMap: PolicyMap = {};
-        if (!obj.hasOwnProperty("policies")) {
+        if (!hasProp(obj, "policies")) {
             return new Config(policyMap);
         }
         for (const key of Object.keys(obj.policies)){

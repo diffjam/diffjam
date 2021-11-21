@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-import _ from "lodash";
 // @ts-ignore
 import meow from "meow";
 import * as configFile from "./src/configFile";
@@ -18,7 +17,7 @@ const clientVers = clientVersion();
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
 // asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
 
-process.on("unhandledRejection", (err: any) => {
+process.on("unhandledRejection", (err: unknown) => {
   console.error("err: ", err);
   throw err;
 });
@@ -26,7 +25,7 @@ process.on("unhandledRejection", (err: any) => {
 
 
 // run!
-const run = async function (action: string, param1: any, flags: { config: any; }) {
+const run = async function (action: string, param1: string, flags: { config: string; }) {
   await configFile.getConfig(flags.config);
   if (!action || action === "menu") {
     return actionMainMenu(clientVers);
@@ -70,4 +69,5 @@ const cli = meow(
   }
 );
 
-run(cli.input[0], cli.input[1], cli.flags);
+// eslint-disable-next-line no-void
+void run(cli.input[0], cli.input[1], cli.flags);

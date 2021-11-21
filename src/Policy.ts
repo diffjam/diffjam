@@ -24,12 +24,21 @@ export interface PolicyJson {
     hiddenFromOutput: boolean;
 }
 
-export const testNeedle = (n: Needle, haystack: string): boolean => {
-  if (isString(n)) {
-    return haystack.includes(n);
+export const testNeedle = (needle: Needle, haystack: string): boolean => {
+  if (isString(needle)) {
+    return haystack.includes(needle);
   }
-  return n.test(haystack);
+  return needle.test(haystack);
 }
+
+export const findFirstNeedle = (needle: Needle, haystack: string): string | never => {
+  if (isString(needle) && haystack.indexOf(needle) !== -1) {
+    return needle;
+  }
+  const matches = ((needle as RegExp).exec(haystack)) || [];
+  return matches[0];
+}
+
 
 export class Policy {
   public needles: Needle[] = [];
