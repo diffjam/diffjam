@@ -1,0 +1,13 @@
+policies:
+  myPolicy:
+    baseline: 10
+    description: Don't add TODOS. DO IT NOW!
+    filePattern: "**/*.ts"
+    hiddenFromOutput: false
+    search: TODO1
+  myPolicy2:
+    baseline: 10
+    description: updated policy file
+    filePattern: "**/*.ts"
+    hiddenFromOutput: false
+    search: TODO2

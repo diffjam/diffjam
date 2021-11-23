@@ -1,0 +1,7 @@
+policies:
+  myPolicy:
+    baseline: 129
+    description: Don't add TODOS. DO IT NOW!
+    filePattern: '**/*.ts'
+    hiddenFromOutput: false
+    search: TODO
