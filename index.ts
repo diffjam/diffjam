@@ -9,6 +9,7 @@ import { actionCinch } from "./src/actions/cinch";
 import { actionCount } from "./src/actions/count";
 import { actionInit } from "./src/actions/init";
 import { actionNewPolicy } from "./src/actions/newPolicy";
+import { actionRemovePolicy } from "./src/actions/remove";
 import { actionPolicyModify } from "./src/actions/policyModify";
 import { actionMainMenu } from "./src/actions/mainMenu";
 
@@ -36,8 +37,10 @@ const run = async function (action: string, policyName: string, flags: { config?
   await configFile.getConfig(flags.config);
 
   switch (action) {
-    case "policy":
-      return actionNewPolicy(); // add a policy to the config
+    case "add":
+      return actionNewPolicy(flags.config); // add a policy to the config
+    case "remove":
+      return actionRemovePolicy(policyName, flags.config); // add a policy to the config
     case "modify":
       return actionPolicyModify(policyName); // add a policy to the config
     case "count":

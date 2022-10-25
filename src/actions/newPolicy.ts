@@ -5,7 +5,7 @@ import { Policy } from "../Policy";
 import * as ui from "../ui";
 
 // create a policy
-export const actionNewPolicy = async () => {
+export const actionNewPolicy = async (filePath: string | undefined) => {
   const conf = await configFile.getConfig();
 
   const name = await ui.textInput("Enter a name for this policy: ");
@@ -46,7 +46,7 @@ export const actionNewPolicy = async () => {
     )
   ) {
     conf.setPolicy(name, policy);
-    configFile.writeConfig(conf);
+    configFile.writeConfig(conf, filePath);
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");

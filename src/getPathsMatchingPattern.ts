@@ -22,8 +22,6 @@ export const cleanIgnorePatterns = (ignorePatterns: string[]) => {
 const cwd = process.cwd();
 
 const gitignoreFile = findup('.gitignore', { cwd: cwd });
-console.log("gitignoreFile: ", gitignoreFile);
-
 
 let gitIgnorePatterns: string[] = [];
 if (gitignoreFile) {
