@@ -2,8 +2,8 @@
 
 This is a command-line utility for documenting, tracking, and discouraging bad patterns in your codebase.
 
-Diffjam allows you to create "policies" -- basically any rule you want to enforce or pattern you want
-to minimize.  You tell diffjam how to count occurrences of violations of the policies
+Diffjam allows you to create "policies" -- rules you want to enforce or pattern you want
+to minimize. You tell diffjam how to count occurrences of violations of the policies
 by providing strings to search for like `TODO`, and then diffjam counts instances of TODO in the codebase.
 It can also be used in a githook to prevent new cases of a bad pattern.
 
@@ -21,7 +21,7 @@ number of good patterns and help you increase that number of over time.
 * `yarn run diffjam`
 
 ## non-interactive commands
-* `diffjam init` : create a new diffjam configuration
+* `diffjam init`: 
 * `diffjam policy` : add a new policy.  Policies are goals for your code.
 * `diffjam count` : see the current values for all quests.
 
@@ -29,17 +29,11 @@ number of good patterns and help you increase that number of over time.
 * `diffjam check` : Same as `count`, but it exits with a code of 1 if the counts aren't good enough for the baselines.
 
 ### extended `diffjam count` usage:
-* use `diffjam --check` to have the process fail when a count is below a baseline
 * use `DIFFJAM_API_KEY=[your api key] diffjam --record` to record counts to diffjam.com.
 
 ### using an alernative configuration file
-Specify it with the `--config` flag.  For a config named `filename.json`,
-`diffjam [command] --config=filename.json`
-
-### example searches
-* count all javascript files: `git ls-files "*.js" | wc -l`
-* count all instances of the string TODO: `git grep TODO | wc -l`
-* count all instances of the string TODO in /src: `git grep TODO ./src | wc -l`
+diffjam uses diffjam.yaml as the default config file. To use another, specify it with the `--config` flag.
+`diffjam [command] --config=alternate-config.yaml`
 
 ## Development
 The development README is [here](devREADME.md).

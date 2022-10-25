@@ -9,6 +9,7 @@ const escapeStringRegexp = (str: string) => {
 };
 
 import { hasProp } from "./hasProp";
+import { findMatches } from "./match";
 import { ReverseRegExp } from "./ReverseRegExp";
 
 export type StringOrRegexp = string | RegExp;
@@ -17,11 +18,12 @@ const regexPrefix = "regex:";
 const inversePrefix = "-:";
 
 export interface PolicyJson {
-    description: string;
-    filePattern: string;
-    search: string[];
-    baseline: number;
-    hiddenFromOutput: boolean;
+  description: string;
+  filePattern: string;
+  ignoreFilePatterns?: string[];
+  search: string[];
+  baseline: number;
+  hiddenFromOutput?: boolean;
 }
 
 export const testNeedle = (needle: Needle, haystack: string): boolean => {
@@ -42,12 +44,14 @@ export const findFirstNeedle = (needle: Needle, haystack: string): string | neve
 
 export class Policy {
   public needles: Needle[] = [];
+  public ignoreFilePatterns: undefined | string[];
 
   constructor(
     public description: string,
     public filePattern: string,
     public search: string[],
     public baseline: number,
+    ignoreFilePatterns?: string | string[],
     public hiddenFromOutput: boolean = false,
   ) {
     this.needles = Policy.searchConfigToNeedles(this.search);
@@ -56,17 +60,25 @@ export class Policy {
     this.search = search;
     this.baseline = baseline;
     this.hiddenFromOutput = hiddenFromOutput;
+    if (ignoreFilePatterns && ignoreFilePatterns.length) {
+      if (!Array.isArray(ignoreFilePatterns)) {
+        this.ignoreFilePatterns = [ignoreFilePatterns];
+      } else {
+        this.ignoreFilePatterns = ignoreFilePatterns;
+      }
+    }
   }
 
   toJson(): PolicyJson {
-    return {
+    const json: PolicyJson = {
       description: this.description,
       filePattern: this.filePattern,
       search: this.search,
       baseline: this.baseline,
       hiddenFromOutput: this.hiddenFromOutput,
-    }
-
+    };
+    if (this.ignoreFilePatterns) json.ignoreFilePatterns = this.ignoreFilePatterns;
+    return json
   }
 
   isCountAcceptable(count: number) {
@@ -81,14 +93,18 @@ export class Policy {
     return findInString(path, this.needles, contents);
   }
 
+  findMatches() {
+    return findMatches(this.filePattern, this.ignoreFilePatterns || [], this.needles);
+  }
+
   static searchConfigToNeedles(search: string[]): Needle[] {
     // optimization? inverse strings don't need to be regexes
     const needles = search.map((i: string) => {
-      if (!i.startsWith(regexPrefix) && !i.startsWith(inversePrefix)){
+      if (!i.startsWith(regexPrefix) && !i.startsWith(inversePrefix)) {
         // return i;
         return new RegExp(escapeStringRegexp(i));
       }
-      if (i.startsWith(inversePrefix)){
+      if (i.startsWith(inversePrefix)) {
         const startIndex = inversePrefix.length;
         const inverseString = i.slice(startIndex);
         return new ReverseRegExp(escapeStringRegexp(inverseString));
@@ -111,13 +127,13 @@ export class Policy {
     }
 
     if (!hasProp(obj, "search") || !isString(obj.search)) {
-      if (Array.isArray(obj.search) && !obj.search.every(isString)){
+      if (Array.isArray(obj.search) && !obj.search.every(isString)) {
         console.error("obj: ", obj);
         throw new Error("missing search");
       }
     }
 
-    if (!Array.isArray(obj.search)){
+    if (!Array.isArray(obj.search)) {
       obj.search = [obj.search];
     }
 
@@ -133,6 +149,6 @@ export class Policy {
       console.error("obj: ", obj);
       throw new Error("missing hiddenFromOutput");
     }
-    return new Policy(obj.description, obj.filePattern, obj.search, obj.baseline, Boolean(obj.hiddenFromOutput));
+    return new Policy(obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
   }
 }

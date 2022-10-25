@@ -7,9 +7,9 @@ import { clientVersion } from "./src/clientVersion";
 import { actionCheck } from "./src/actions/check";
 import { actionCinch } from "./src/actions/cinch";
 import { actionCount } from "./src/actions/count";
+import { actionInit } from "./src/actions/init";
 import { actionNewPolicy } from "./src/actions/newPolicy";
 import { actionPolicyModify } from "./src/actions/policyModify";
-import { actionInit } from "./src/actions/init";
 import { actionMainMenu } from "./src/actions/mainMenu";
 
 const clientVers = clientVersion();
@@ -25,18 +25,21 @@ process.on("unhandledRejection", (err: unknown) => {
 
 
 // run!
-const run = async function (action: string, param1: string, flags: { config: string; }) {
-  await configFile.getConfig(flags.config);
+const run = async function (action: string, policyName: string, flags: { config?: string; }) {
   if (!action || action === "menu") {
     return actionMainMenu(clientVers);
   }
+  if (action === "init") {
+    return actionInit(flags.config);
+  }
+
+  await configFile.getConfig(flags.config);
+
   switch (action) {
-    case "init":
-      return actionInit(); // create the config
     case "policy":
       return actionNewPolicy(); // add a policy to the config
     case "modify":
-      return actionPolicyModify(param1); // add a policy to the config
+      return actionPolicyModify(policyName); // add a policy to the config
     case "count":
       return actionCount(flags, clientVers); // run the policy counter
     case "check":

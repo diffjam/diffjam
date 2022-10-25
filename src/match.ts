@@ -1,22 +1,22 @@
 import { flatten } from "lodash";
 import { findInString } from "./findInString";
 import { getPathsMatchingPattern } from "./getPathsMatchingPattern";
-import { Needle} from "./Policy";
+import { Needle } from "./Policy";
 import { readFile } from "./readFile";
 
 const cwd = process.cwd()
 
 export interface Match {
-    number: number;
-    line: string;
-    match: string;
-    path: string;
+  number: number;
+  line: string;
+  match: string;
+  path: string;
 }
 type MatchDict = { [key: string]: Match[] };
 
-export const findMatches = async (filePattern: string, search: Needle[], dir: string = cwd) => {
+export const findMatches = async (filePattern: string, ignorePatterns: string[], search: Needle[], dir: string = cwd) => {
   // const dir = process.cwd();
-  const filePaths = await getPathsMatchingPattern(dir, filePattern);
+  const filePaths = await getPathsMatchingPattern(dir, filePattern, ignorePatterns);
   const results: MatchDict = {};
   // File contents are cached for subsequent calls
   // so we just use a plain for loop here instead of
@@ -25,7 +25,7 @@ export const findMatches = async (filePattern: string, search: Needle[], dir: st
   for (const path of filePaths) {
     const contents = await readFile(path);
     const found = findInString(path, search, contents);
-    if (found.length > 0){
+    if (found.length > 0) {
       results[path] = found;
     }
   }
