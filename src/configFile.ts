@@ -16,7 +16,7 @@ export function exampleConfig(): Config {
     "No console.log": new Policy(
       "An example policy enforcing no console.log calls in src/",
       "src/**/*.*",
-      ["regex:console.log\\(.*\\)"],
+      ["regex:console.log\\\\(.*\\\\)"],
       0
     )
   });
