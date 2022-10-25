@@ -28,7 +28,7 @@ process.on("unhandledRejection", (err: unknown) => {
 // run!
 const run = async function (action: string, policyName: string, flags: { config?: string; }) {
   if (!action || action === "menu") {
-    return actionMainMenu(clientVers);
+    return actionMainMenu(clientVers, flags);
   }
   if (action === "init") {
     return actionInit(flags.config);

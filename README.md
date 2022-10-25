@@ -23,7 +23,7 @@ $ yarn diffjam check
 searching for policy violations: [====================] 100% 0.0s
 ❌️ No console.log: 1 (expected 0 or fewer)
 Violation:
-/Users/user/dev/classdojo/parent-android-web/src/effects/useQuota.tsx:8 -       console.log('abc');
+src/effects/useQuota.tsx:8 -       console.log('abc');
  Do not call console.log on the frontend
 
 ❌️ Check failed.
