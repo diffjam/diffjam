@@ -13,10 +13,10 @@ export async function exists(file = defaultFilePath) {
 
 export function exampleConfig(): Config {
   return new Config({
-    "No console.log": new Policy(
-      "An example policy enforcing no console.log calls in src/",
+    "Example policy": new Policy(
+      "An example policy ensuring there are no TODOs in the code",
       "src/**/*.*",
-      ["regex:console.log\\\\(.*\\\\)"],
+      ["regex:TODO"],
       0
     )
   });
