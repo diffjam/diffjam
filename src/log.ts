@@ -1,10 +1,10 @@
 import chalk from "chalk";
 import { Policy } from "./Policy";
 import ProgressBar from 'progress';
-import { getResults, SuccessOrBreach } from "./getResults";
-import * as configFile from "./configFile";
+import { getResults } from "./getResults";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Config } from "./Config";
+import { partition } from "lodash";
 
 const RED_X = chalk.red("❌️");
 export const GREEN_CHECK = chalk.green("✔️");
@@ -14,59 +14,52 @@ export const logCheckFailedError = () => {
 };
 
 
-export const logPolicyResult = (name: string, policy: Policy, result: number, duration: number) => {
-  if (!policy.isCountAcceptable(result)) {
+export const logPolicyResult = (policy: Policy) => {
+  if (!policy.isCountAcceptable()) {
     return console.error(
-      `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${policy.baseline
+      `${RED_X} ${chalk.red.bold(policy.name)}: ${policy.matches.length} (expected ${policy.baseline
       } or fewer)`
     );
   }
   return console.log(
-    `${GREEN_CHECK} ${chalk.bold(name)}: ${result} (in ${duration} ms)`
+    `${GREEN_CHECK} ${chalk.bold(policy.name)}: ${policy.matches.length}`
   );
 };
 
-const logBreachError = (breach: SuccessOrBreach) => {
+const logBreachError = (breach: Policy) => {
   console.error(
-    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${breach.policy.baseline
+    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.matches.length} (expected ${breach.baseline
     } or fewer)`
   );
 
-  const count = Math.min(10, breach.examples.length)
+  const count = Math.min(10, breach.matches.length)
   console.log(count > 1 ? `Violation:` : `Last ${count} examples:`)
-  const examples = breach.examples.slice(0, count).map(b => `${b.path}:${b.number} - ${b.line}`)
+  const examples = breach.matches.slice(0, count).map(b => `${b.path}:${b.number} - ${b.line}`)
   console.log(examples.join("\n"));
 
-  if (breach.policy.description) {
-    console.error("", chalk.magenta(breach.policy.description));
+  if (breach.description) {
+    console.error("", chalk.magenta(breach.description));
   }
 };
 
 export const logResults = async (conf: Config, cwd: CurrentWorkingDirectory) => {
-  const policies = conf.policyMap;
-  const policiesList = Object.keys(policies);
-  const bar = new ProgressBar('searching for policy violations: [:bar] :percent :etas', {
-    complete: '=',
-    incomplete: ' ',
-    width: 20,
-    total: policiesList.length * 2,
-  });
+  const policies = await getResults(cwd, conf);
 
-  const { results, successes, breaches } = await getResults(cwd, conf, bar);
+  const [successes, breaches] = partition(policies, policy => policy.isCountAcceptable());
 
   breaches.forEach((b) => {
     logBreachError(b);
   });
 
   successes.forEach((s) => {
-    if (!s.policy.hiddenFromOutput) {
-      logPolicyResult(s.name, s.policy, s.result, s.duration);
+    if (!s.hiddenFromOutput) {
+      logPolicyResult(s);
     }
   });
 
   console.log("\n");
+
   return {
-    results,
     successes,
     breaches
   };

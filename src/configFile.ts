@@ -15,6 +15,7 @@ export async function exists(file = defaultFilePath) {
 export function exampleConfig(): Config {
   return new Config({
     "Example policy": new Policy(
+      "Example policy",
       "An example policy ensuring there are no TODOs in the code",
       "src/**/*.*",
       ["regex:TODO"],

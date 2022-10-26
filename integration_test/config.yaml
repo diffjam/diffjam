@@ -3,6 +3,8 @@ policies:
     baseline: 0
     description: No line
     filePattern: example_code/**/*.*
+    ignoreFilePatterns:
+      - "**/*.py"
     search:
       - line
   

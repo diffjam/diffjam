@@ -2,14 +2,14 @@ import { dump, load } from "js-yaml";
 import { hasProp } from "./hasProp";
 import { Policy, PolicyJson } from "./Policy";
 
-type PolicyMap = {[name: string]: Policy};
+export type PolicyMap = { [name: string]: Policy };
 
 export interface ConfigJson {
-    policies: {[key: string]: PolicyJson};
+    policies: { [key: string]: PolicyJson };
 }
 
 export class Config {
-    constructor (public policyMap: PolicyMap) {
+    constructor(public policyMap: PolicyMap) {
 
     }
 
@@ -19,8 +19,8 @@ export class Config {
         if (!hasProp(obj, "policies")) {
             return new Config(policyMap);
         }
-        for (const key of Object.keys(obj.policies)){
-            policyMap[key] = Policy.fromJson(obj.policies[key]);
+        for (const key of Object.keys(obj.policies)) {
+            policyMap[key] = Policy.fromJson(key, obj.policies[key]);
         }
         return new Config(policyMap);
     }
@@ -41,21 +41,21 @@ export class Config {
         return Object.keys(this.policyMap);
     }
 
-    toJson (): ConfigJson {
-        const retval: ConfigJson = { policies: {}};
-        for (const key of Object.keys(this.policyMap)){
+    toJson(): ConfigJson {
+        const retval: ConfigJson = { policies: {} };
+        for (const key of Object.keys(this.policyMap)) {
             retval.policies[key] = this.policyMap[key].toJson();
         }
         return retval;
     }
 
-    toYaml (): string {
+    toYaml(): string {
         const object = this.toJson();
         return dump(object, {
             'styles': {
-              '!!null': 'canonical' // dump null as ~
+                '!!null': 'canonical' // dump null as ~
             },
             'sortKeys': true        // sort object keys
-          });
+        });
     }
 }

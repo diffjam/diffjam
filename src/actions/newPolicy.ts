@@ -1,6 +1,6 @@
 
 import * as configFile from "../configFile";
-import { countMatches, findMatches } from "../match";
+// import { countMatches, findMatches } from "../match";
 import { Policy } from "../Policy";
 import * as ui from "../ui";
 
@@ -31,24 +31,25 @@ export const actionNewPolicy = async (filePath: string | undefined) => {
     }
   }
 
-  const policy = new Policy("", filePattern, [search], 0, ignoreFilePatterns);
+  const policy = new Policy(name, "", filePattern, [search], 0, ignoreFilePatterns);
 
   policy.description = await ui.textInput(
     "Give a description for this policy: "
   );
-  const count = countMatches(await policy.findMatches());
 
-  policy.baseline = count;
+  // const count = countMatches(await policy.findMatches());
 
-  if (
-    await ui.confirm(
-      `There are currently ${count} matches for that configuration. Save it?`
-    )
-  ) {
-    conf.setPolicy(name, policy);
-    configFile.writeConfig(conf, filePath);
-    console.log("Saved!");
-  } else {
-    console.log("Cancelled save.");
-  }
+  // policy.baseline = count;
+
+  // if (
+  //   await ui.confirm(
+  //     `There are currently ${count} matches for that configuration. Save it?`
+  //   )
+  // ) {
+  //   conf.setPolicy(name, policy);
+  //   configFile.writeConfig(conf, filePath);
+  //   console.log("Saved!");
+  // } else {
+  //   console.log("Cancelled save.");
+  // }
 }

@@ -10,7 +10,7 @@ import { actionCheck } from "./src/actions/check";
 import { actionInit } from "./src/actions/init";
 import { actionNewPolicy } from "./src/actions/newPolicy";
 import { actionRemovePolicy } from "./src/actions/remove";
-import { actionPolicyModify } from "./src/actions/policyModify";
+// import { actionPolicyModify } from "./src/actions/policyModify";
 import { CurrentWorkingDirectory } from "./src/CurrentWorkingDirectory";
 // import { actionMainMenu } from "./src/actions/mainMenu";
 
@@ -45,8 +45,8 @@ const run = async function (action: string, policyName: string, flags: { dir?: s
       return actionNewPolicy(flags.config); // add a policy to the config
     case "remove":
       return actionRemovePolicy(policyName, flags.config); // add a policy to the config
-    case "modify":
-      return actionPolicyModify(policyName); // add a policy to the config
+    // case "modify":
+    //   return actionPolicyModify(policyName); // add a policy to the config
     // case "count":
     //   return actionCount(flags, clientVers); // run the policy counter
     case "check":

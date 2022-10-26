@@ -10,7 +10,7 @@ const escapeStringRegexp = (str: string) => {
 };
 
 import { hasProp } from "./hasProp";
-import { findMatches, Match, MatchDict } from "./match";
+import { Match } from "./match";
 import { ReverseRegExp } from "./ReverseRegExp";
 
 export type StringOrRegexp = string | RegExp;
@@ -46,8 +46,12 @@ export const findFirstNeedle = (needle: Needle, haystack: string): string | neve
 export class Policy {
   public needles: Needle[] = [];
   public ignoreFilePatterns: undefined | string[];
+  public filesToCheck: Set<string>;
+  public matches: Match[];
+  // public matchCount: number;
 
   constructor(
+    public name: string,
     public description: string,
     public filePattern: string,
     public search: string[],
@@ -68,6 +72,8 @@ export class Policy {
         this.ignoreFilePatterns = ignoreFilePatterns;
       }
     }
+    this.filesToCheck = new Set<string>();
+    this.matches = [];
   }
 
   toJson(): PolicyJson {
@@ -82,30 +88,29 @@ export class Policy {
     return json
   }
 
-  isCountAcceptable(count: number) {
-    return count <= this.baseline;
-  }
-
-  isCountCinchable(count: number) {
-    return count < this.baseline;
-  }
-
   fileUnderPolicy(filePath: string) {
-    return mm.any(filePath, this.filePattern) && (
+    const underPolicy = mm.any(filePath, this.filePattern) && (
       !this.ignoreFilePatterns ||
       !mm.any(filePath, this.ignoreFilePatterns)
     );
+    if (underPolicy) {
+      this.filesToCheck.add(filePath);
+    }
+    return underPolicy;
   }
 
-  evaluateFileContents(cwd: string, path: string, contents: string) {
-    return findInString(cwd, path, this.needles, contents);
+  processFile(filePath: string, fileContents: string) {
+    const matches = findInString(filePath, this.needles, fileContents);
+    this.matches.push(...matches);
   }
 
-  // findMatches() {
-  //   return findMatches(this.filePattern, this.ignoreFilePatterns || [], this.needles);
-  // }
+  isCountAcceptable() {
+    return this.matches.length <= this.baseline;
+  }
 
-  findMatches(): MatchDict { return {} }
+  isCountCinchable() {
+    return this.matches.length < this.baseline;
+  }
 
   static searchConfigToNeedles(search: string[]): Needle[] {
     // optimization? inverse strings don't need to be regexes
@@ -124,10 +129,9 @@ export class Policy {
       return new RegExp(regexString);
     });
     return needles;
-
   }
 
-  static fromJson(obj: any): Policy {
+  static fromJson(name: string, obj: any): Policy {
     if (!obj) {
       throw new Error("input was empty");
     }
@@ -159,6 +163,6 @@ export class Policy {
       console.error("obj: ", obj);
       throw new Error("missing hiddenFromOutput");
     }
-    return new Policy(obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
+    return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
   }
 }

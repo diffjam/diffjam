@@ -32,7 +32,6 @@ export class CurrentWorkingDirectory {
   }
 
   private filterFile(matchPatterns: string[], path: string, isDirectory: boolean): boolean {
-    console.log(matchPatterns, path, isDirectory, mm.any(path, matchPatterns));
     return !isDirectory && !mm.any(path, this.gitignorePatterns) && mm.any(path, matchPatterns);
   }
 

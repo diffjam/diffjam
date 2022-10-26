@@ -21,14 +21,10 @@ const findInMatches = (needles: Needle[], matches: Match[]): Match[] => {
 
 const newLineRegExp = "\n";
 
-export const findInString = (cwd: string, path: string, needles: Needle[], haystack: string): Match[] => {
+export const findInString = (path: string, needles: Needle[], haystack: string): Match[] => {
   const matchArray: Match[] = [];
   const lines = haystack.split(newLineRegExp);
   const needle = needles[0];
-  let pathToPrint = path;
-  if (pathToPrint.startsWith(cwd)) {
-    pathToPrint = pathToPrint.slice(cwd.length + 1, pathToPrint.length);
-  }
   lines.forEach((line, i) => {
     const number = i + 1;
 
@@ -38,7 +34,7 @@ export const findInString = (cwd: string, path: string, needles: Needle[], hayst
           line: line,
           number,
           match: needle,
-          path: pathToPrint,
+          path,
         };
         matchArray.push(retval);
         return;
@@ -49,7 +45,7 @@ export const findInString = (cwd: string, path: string, needles: Needle[], hayst
           line: line,
           number,
           match: line,
-          path: pathToPrint,
+          path,
         };
         matchArray.push(retval);
         return;
@@ -62,7 +58,7 @@ export const findInString = (cwd: string, path: string, needles: Needle[], hayst
         line: line,
         number,
         match,
-        path: pathToPrint,
+        path,
       };
       matchArray.push(retval);
     }
