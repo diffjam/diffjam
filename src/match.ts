@@ -4,19 +4,17 @@ import { getPathsMatchingPattern } from "./getPathsMatchingPattern";
 import { Needle } from "./Policy";
 import { readFile } from "./readFile";
 
-const cwd = process.cwd()
-
 export interface Match {
   number: number;
   line: string;
   match: string;
   path: string;
 }
-type MatchDict = { [key: string]: Match[] };
+export type MatchDict = { [key: string]: Match[] };
 
-export const findMatches = async (filePattern: string, ignorePatterns: string[], search: Needle[], dir: string = cwd) => {
-  // const dir = process.cwd();
-  const filePaths = await getPathsMatchingPattern(dir, filePattern, ignorePatterns);
+export const findMatches = async (cwd: string, filePattern: string, ignorePatterns: string[], search: Needle[]) => {
+
+  const filePaths = await getPathsMatchingPattern(cwd, filePattern, ignorePatterns);
   const results: MatchDict = {};
   // File contents are cached for subsequent calls
   // so we just use a plain for loop here instead of
@@ -24,7 +22,7 @@ export const findMatches = async (filePattern: string, ignorePatterns: string[],
   // the cache.
   for (const path of filePaths) {
     const contents = await readFile(path);
-    const found = findInString(path, search, contents);
+    const found = findInString(cwd, path, search, contents);
     if (found.length > 0) {
       results[path] = found;
     }

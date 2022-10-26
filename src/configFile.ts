@@ -2,6 +2,7 @@ import { exists as fileExists, readFileSync, writeFileSync } from "mz/fs";
 import { join } from "path";
 import { Config } from "./Config";
 import { Policy } from "./Policy";
+
 let config: Config;
 let configLoaded = false;
 

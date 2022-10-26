@@ -1,0 +1,9 @@
+policies:
+  "No line":
+    baseline: 0
+    description: No line
+    filePattern: example_code/**/*.*
+    search:
+      - line
+  
+  

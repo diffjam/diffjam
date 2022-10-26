@@ -1,4 +1,5 @@
 import { isBoolean, isNumber, isString } from "lodash";
+import mm from 'micromatch';
 import { findInString } from "./findInString";
 
 // eslint-disable-next-line arrow-body-style
@@ -9,7 +10,7 @@ const escapeStringRegexp = (str: string) => {
 };
 
 import { hasProp } from "./hasProp";
-import { findMatches } from "./match";
+import { findMatches, Match, MatchDict } from "./match";
 import { ReverseRegExp } from "./ReverseRegExp";
 
 export type StringOrRegexp = string | RegExp;
@@ -89,13 +90,22 @@ export class Policy {
     return count < this.baseline;
   }
 
-  evaluateFileContents(path: string, contents: string) {
-    return findInString(path, this.needles, contents);
+  fileUnderPolicy(filePath: string) {
+    return mm.any(filePath, this.filePattern) && (
+      !this.ignoreFilePatterns ||
+      !mm.any(filePath, this.ignoreFilePatterns)
+    );
   }
 
-  findMatches() {
-    return findMatches(this.filePattern, this.ignoreFilePatterns || [], this.needles);
+  evaluateFileContents(cwd: string, path: string, contents: string) {
+    return findInString(cwd, path, this.needles, contents);
   }
+
+  // findMatches() {
+  //   return findMatches(this.filePattern, this.ignoreFilePatterns || [], this.needles);
+  // }
+
+  findMatches(): MatchDict { return {} }
 
   static searchConfigToNeedles(search: string[]): Needle[] {
     // optimization? inverse strings don't need to be regexes

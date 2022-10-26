@@ -3,8 +3,6 @@ import { hasProp } from "./hasProp";
 import { Match } from "./match";
 import { Needle, testNeedle } from "./Policy";
 
-const cwd = process.cwd();
-
 // see if our sequence of regexes all match the line
 const findInMatch = (needles: Needle[], match: Match): boolean => {
   for (const needle of needles) {
@@ -23,7 +21,7 @@ const findInMatches = (needles: Needle[], matches: Match[]): Match[] => {
 
 const newLineRegExp = "\n";
 
-export const findInString = (path: string, needles: Needle[], haystack: string): Match[] => {
+export const findInString = (cwd: string, path: string, needles: Needle[], haystack: string): Match[] => {
   const matchArray: Match[] = [];
   const lines = haystack.split(newLineRegExp);
   const needle = needles[0];

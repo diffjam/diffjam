@@ -3,6 +3,8 @@ import { Policy } from "./Policy";
 import ProgressBar from 'progress';
 import { getResults, SuccessOrBreach } from "./getResults";
 import * as configFile from "./configFile";
+import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
+import { Config } from "./Config";
 
 const RED_X = chalk.red("❌️");
 export const GREEN_CHECK = chalk.green("✔️");
@@ -40,8 +42,7 @@ const logBreachError = (breach: SuccessOrBreach) => {
   }
 };
 
-export const logResults = async () => {
-  const conf = await configFile.getConfig();
+export const logResults = async (conf: Config, cwd: CurrentWorkingDirectory) => {
   const policies = conf.policyMap;
   const policiesList = Object.keys(policies);
   const bar = new ProgressBar('searching for policy violations: [:bar] :percent :etas', {
@@ -51,7 +52,7 @@ export const logResults = async () => {
     total: policiesList.length * 2,
   });
 
-  const { results, successes, breaches } = await getResults(bar);
+  const { results, successes, breaches } = await getResults(cwd, conf, bar);
 
   breaches.forEach((b) => {
     logBreachError(b);
