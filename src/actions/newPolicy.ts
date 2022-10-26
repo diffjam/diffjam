@@ -5,31 +5,38 @@ import { Policy } from "../Policy";
 import * as ui from "../ui";
 
 // create a policy
-export const actionNewPolicy = async (name?: string, search?: string, filePattern?: string) => {
+export const actionNewPolicy = async (filePath: string | undefined) => {
   const conf = await configFile.getConfig();
 
-  if (!name) {
-    name = await ui.textInput("Enter a name for this policy: ");
-  }
+  const name = await ui.textInput("Enter a name for this policy: ");
 
-  if (!search) {
-    search = await ui.textInput(
-      "Enter the search criteria for this policy: "
+  const search = await ui.textInput(
+    "Enter the search criteria for this policy: "
+  );
+
+  const filePattern = await ui.textInput(
+    "Enter the filePattern to search for this policy: "
+  );
+
+  const ignoreFilePatterns = []
+  while (true) {
+    const ignoreFilePattern = await ui.textInput(
+      "Enter any filePatterns to ignore (or leave blank to continue): "
     );
+
+    if (ignoreFilePattern.trim()) {
+      ignoreFilePatterns.push(ignoreFilePattern);
+    } else {
+      break;
+    }
   }
 
-  if (!filePattern) {
-    filePattern = await ui.textInput(
-      "Enter the filePattern to search for this policy: "
-    );
-  }
-
-  const policy = new Policy("", filePattern, [search], 0);
+  const policy = new Policy("", filePattern, [search], 0, ignoreFilePatterns);
 
   policy.description = await ui.textInput(
     "Give a description for this policy: "
   );
-  const count = countMatches(await findMatches(policy.filePattern, policy.needles));
+  const count = countMatches(await policy.findMatches());
 
   policy.baseline = count;
 
@@ -39,7 +46,7 @@ export const actionNewPolicy = async (name?: string, search?: string, filePatter
     )
   ) {
     conf.setPolicy(name, policy);
-    configFile.writeConfig(conf);
+    configFile.writeConfig(conf, filePath);
     console.log("Saved!");
   } else {
     console.log("Cancelled save.");

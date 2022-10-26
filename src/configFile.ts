@@ -1,22 +1,39 @@
 import { exists as fileExists, readFileSync, writeFileSync } from "mz/fs";
+import { join } from "path";
 import { Config } from "./Config";
 import { Policy } from "./Policy";
 let config: Config;
 let configLoaded = false;
-const defaultFilePath = "./diffjam.yaml";
+
+const defaultFilePath = join(process.cwd(), "diffjam.yaml");
 
 export async function exists(file = defaultFilePath) {
   return fileExists(file);
 }
 
+export function exampleConfig(): Config {
+  return new Config({
+    "Example policy": new Policy(
+      "An example policy ensuring there are no TODOs in the code",
+      "src/**/*.*",
+      ["regex:TODO"],
+      0
+    )
+  });
+}
+
 export async function refresh(file = defaultFilePath): Promise<Config> {
-  const exists = await fileExists(file);
-  if (exists) {
-    config = Config.fromYaml(readFileSync(file).toString());
-    configLoaded = true;
+  let fileContents
+  try {
+    fileContents = readFileSync(file).toString()
+  } catch (e) { }
+
+  if (fileContents) {
+    config = Config.fromYaml(fileContents);
   } else {
     config = new Config({});
   }
+  configLoaded = true;
   return config;
 }
 

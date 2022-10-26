@@ -11,7 +11,7 @@ export const cleanIgnorePatterns = (ignorePatterns: string[]) => {
       return p.slice(1, p.length);
     }
     const lastChar = p[p.length - 1];
-    if (lastChar && lastChar === "/"){
+    if (lastChar && lastChar === "/") {
       return p.slice(0, p.length - 1);
     }
     return p;
@@ -21,17 +21,15 @@ export const cleanIgnorePatterns = (ignorePatterns: string[]) => {
 
 const cwd = process.cwd();
 
-const gitignoreFile = findup('.gitignore', {cwd: cwd});
-console.log("gitignoreFile: ", gitignoreFile);
+const gitignoreFile = findup('.gitignore', { cwd: cwd });
 
-
-let ignorePatterns: string[] = [];
-if (gitignoreFile){
+let gitIgnorePatterns: string[] = [];
+if (gitignoreFile) {
   const fileContents = fs.readFileSync(gitignoreFile).toString();
-  ignorePatterns = cleanIgnorePatterns(ignore(fileContents));
+  gitIgnorePatterns = cleanIgnorePatterns(ignore(fileContents));
 }
 
-export const getIgnorePatterns = () => ignorePatterns;
+export const getGitIgnorePatterns = () => gitIgnorePatterns;
 
 
 export const pathMatchesPatterns = (path: string, patterns: string[]) => {
@@ -82,58 +80,58 @@ export const excludeDirectory = (cwd: string, ignorePatterns: string[], dirName:
 };
 
 
-export const filterFile = (basePath: string, includePatterns: string, ignorePatterns: string[], path: string, isDirectory: boolean): boolean => {
-    // console.log('in the filter');
+export const filterFile = (basePath: string, includePattern: string, ignorePatterns: string[], path: string, isDirectory: boolean): boolean => {
+  // console.log('in the filter');
 
 
-    // no directories (but recurse)
-    if (isDirectory) return false;
+  // no directories (but recurse)
+  if (isDirectory) return false;
 
-    // no diffjam.yaml
-    if (path === "diffjam.yaml") return false;
+  // no diffjam.yaml
+  if (path === "diffjam.yaml") return false;
 
-    // ignore based on .gitignore
-    // console.log("path: ", path);
-    // console.log("checking shouldIgnore for path: ", path);
-    // console.log("ignorePatterns: ", ignorePatterns);
+  // ignore based on .gitignore
+  // console.log("path: ", path);
+  // console.log("checking shouldIgnore for path: ", path);
+  // console.log("ignorePatterns: ", ignorePatterns);
 
-    if (pathMatchesPatterns(path, ignorePatterns)) {
-      return false;
-    }
-
-    if (path.startsWith(basePath)) {
-      path = path.slice(basePath.length, path.length);
-    }
-    if (path.startsWith("/")) {
-      path = path.slice(1, path.length);
-    }
-
-    if (pathMatchesPatterns(path, [includePatterns])) {
-      return true;
-    }
-
+  if (pathMatchesPatterns(path, ignorePatterns)) {
     return false;
-  };
+  }
 
-const cachedPaths: {[key: string]: string[]} = {};
+  if (path.startsWith(basePath)) {
+    path = path.slice(basePath.length, path.length);
+  }
+  if (path.startsWith("/")) {
+    path = path.slice(1, path.length);
+  }
 
-export const getPathsMatchingPattern = async (basePath: string, includePatterns: string) => {
-  if (!cachedPaths[includePatterns]) {
+  if (pathMatchesPatterns(path, [includePattern])) {
+    return true;
+  }
+
+  return false;
+};
+
+const cachedPaths: { [key: string]: string[] } = {};
+
+export const getPathsMatchingPattern = async (basePath: string, includePattern: string, ignorePatterns: string[]) => {
+  if (!cachedPaths[includePattern]) {
     // console.log("dir: ", basePath);
     // console.log("patterns: ", patterns);
-    const ignorePatterns = getIgnorePatterns();
+    const allIgnorePatterns = getGitIgnorePatterns().concat(ignorePatterns);
 
     // fdir's globbing just seems broken, so we implement our own in filterFile()
-    cachedPaths[includePatterns] = (await new fdir()
+    cachedPaths[includePattern] = (await new fdir()
       .withBasePath()
       .filter((path: string, isDirectory: boolean) =>
-        filterFile(basePath, includePatterns, ignorePatterns, path, isDirectory),
+        filterFile(basePath, includePattern, allIgnorePatterns, path, isDirectory),
       )
-      .exclude((dirName: string, dirPath: string) => excludeDirectory(cwd, ignorePatterns, dirName, dirPath))
+      .exclude((dirName: string, dirPath: string) => excludeDirectory(cwd, allIgnorePatterns, dirName, dirPath))
       .withErrors()
       .crawl(basePath)
       .withPromise()) as string[];
   }
 
-  return cachedPaths[includePatterns];
+  return cachedPaths[includePattern];
 };

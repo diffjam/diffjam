@@ -15,9 +15,8 @@ export const logCheckFailedError = () => {
 export const logPolicyResult = (name: string, policy: Policy, result: number, duration: number) => {
   if (!policy.isCountAcceptable(result)) {
     return console.error(
-      `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${
-      policy.baseline
-      } or fewer`
+      `${RED_X} ${chalk.red.bold(name)}: ${result} (expected ${policy.baseline
+      } or fewer)`
     );
   }
   return console.log(
@@ -27,9 +26,8 @@ export const logPolicyResult = (name: string, policy: Policy, result: number, du
 
 const logBreachError = (breach: SuccessOrBreach) => {
   console.error(
-    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${
-    breach.policy.baseline
-    } or fewer`
+    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.result} (expected ${breach.policy.baseline
+    } or fewer)`
   );
 
   const count = Math.min(10, breach.examples.length)

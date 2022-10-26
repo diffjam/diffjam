@@ -2,14 +2,13 @@ import expect from "expect";
 import { cleanIgnorePatterns, excludeDirectory, filterFile, pathMatchesPatterns } from "../src/getPathsMatchingPattern";
 
 describe("getPathsMatchingPatterns", () => {
-
   describe("cleanIgnorePatterns", () => {
-      it("cleans leading slashes", () => {
-        expect(cleanIgnorePatterns(["/asdf"])).toEqual(["asdf"]);
-      });
-      it("cleans trailing  slashes", () => {
-        expect(cleanIgnorePatterns(["/asdf"])).toEqual(["asdf"]);
-      });
+    it("cleans leading slashes", () => {
+      expect(cleanIgnorePatterns(["/asdf"])).toEqual(["asdf"]);
+    });
+    it("cleans trailing  slashes", () => {
+      expect(cleanIgnorePatterns(["/asdf"])).toEqual(["asdf"]);
+    });
   });
 
   describe("pathMatchesPatterns", () => {
@@ -22,18 +21,18 @@ describe("getPathsMatchingPatterns", () => {
   });
 
   describe("filterFile", () => {
-      it("denies directories", () => {
-          expect(filterFile("/home/diffjam/test", "**/*", [], "asdf", true)).toEqual(false);
-      });
-      it("denies diffjam.yaml", () => {
-          expect(filterFile("/home/diffjam/test", "**/*", [], "diffjam.yaml", false)).toEqual(false);
-      });
-      it("denies an ignored file", () => {
-          expect(filterFile("/home/diffjam/test", "**/*", ["asdf.txt"], "asdf.txt", false)).toEqual(false);
-      });
-      it("allows an acceptable file for the most open pattern", () => {
-          expect(filterFile("/home/diffjam/test", "**/*", [], "asdf.txt", false)).toEqual(true);
-      });
+    it("denies directories", () => {
+      expect(filterFile("/home/diffjam/test", "**/*", [], "asdf", true)).toEqual(false);
+    });
+    it("denies diffjam.yaml", () => {
+      expect(filterFile("/home/diffjam/test", "**/*", [], "diffjam.yaml", false)).toEqual(false);
+    });
+    it("denies an ignored file", () => {
+      expect(filterFile("/home/diffjam/test", "**/*", ["asdf.txt"], "asdf.txt", false)).toEqual(false);
+    });
+    it("allows an acceptable file for the most open pattern", () => {
+      expect(filterFile("/home/diffjam/test", "**/*", [], "asdf.txt", false)).toEqual(true);
+    });
   });
 
   describe("excludeDirFn", () => {

@@ -8,11 +8,11 @@ import { logo } from "../logo";
 import * as ui from "../ui";
 import _ from "lodash";
 
-export const actionMainMenu = async (clientVers: string) => {
+export const actionMainMenu = async (clientVers: string, flags: { config?: string; }) => {
   console.log(logo(clientVers) + "\n");
   const config = await configFile.getConfig();
   const policyNames = config.getPolicyNames();
-  const editChoicesMap: {[key: string]: {type: string, name: string}} = {};
+  const editChoicesMap: { [key: string]: { type: string, name: string } } = {};
   policyNames.forEach((name: string) => {
     editChoicesMap[`edit "${name}"`] = {
       type: "edit_policy",
@@ -39,7 +39,7 @@ export const actionMainMenu = async (clientVers: string) => {
 
   switch (mainMenuChoice.type) {
     case "new_policy":
-      return actionNewPolicy();
+      return actionNewPolicy(flags.config);
     case "cinch":
       return actionCinch();
     case "count":

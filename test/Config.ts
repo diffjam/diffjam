@@ -5,8 +5,8 @@ import expect from "expect";
 describe("Config", () => {
     describe("#fromYaml", () => {
         it("loads data from yaml", () => {
-            const yaml = 
-`policies:
+            const yaml =
+                `policies:
   myPolicy:
     baseline: 0
     description: description
@@ -21,6 +21,50 @@ describe("Config", () => {
             expect(policy.search).toEqual(["TODO"]);
             expect(policy.filePattern).toEqual("*.ts");
             expect(policy.hiddenFromOutput).toEqual(false);
+            expect(policy.ignoreFilePatterns).toEqual(undefined);
+        })
+
+        it("allows ignoreFilePatterns", () => {
+            const yaml =
+                `policies:
+  myPolicy:
+    baseline: 0
+    description: description
+    filePattern: '*.ts'
+    hiddenFromOutput: false
+    search: TODO
+    ignoreFilePatterns:
+            - 'foo.js'
+`;
+            const conf = Config.fromYaml(yaml);
+            const policy = conf.policyMap["myPolicy"];
+            expect(policy.baseline).toEqual(0);
+            expect(policy.description).toEqual("description");
+            expect(policy.search).toEqual(["TODO"]);
+            expect(policy.filePattern).toEqual("*.ts");
+            expect(policy.hiddenFromOutput).toEqual(false);
+            expect(policy.ignoreFilePatterns).toEqual(['foo.js']);
+        });
+
+        it("coerces string ignoreFilePatterns to an array", () => {
+            const yaml =
+                `policies:
+  myPolicy:
+    baseline: 0
+    description: description
+    filePattern: '*.ts'
+    hiddenFromOutput: false
+    search: TODO
+    ignoreFilePatterns: foo.js
+`;
+            const conf = Config.fromYaml(yaml);
+            const policy = conf.policyMap["myPolicy"];
+            expect(policy.baseline).toEqual(0);
+            expect(policy.description).toEqual("description");
+            expect(policy.search).toEqual(["TODO"]);
+            expect(policy.filePattern).toEqual("*.ts");
+            expect(policy.hiddenFromOutput).toEqual(false);
+            expect(policy.ignoreFilePatterns).toEqual(['foo.js']);
         })
     });
     describe("#getPolicy", () => {
@@ -69,7 +113,7 @@ describe("Config", () => {
                 myPolicy: new Policy("description", "*.ts", ["TODO"], 0)
             });
             expect(conf.toYaml()).toEqual(
-`policies:
+                `policies:
   myPolicy:
     baseline: 0
     description: description
@@ -78,7 +122,7 @@ describe("Config", () => {
     search:
       - TODO
 `
-                );
+            );
         });
     });
 

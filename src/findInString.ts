@@ -1,7 +1,9 @@
 import { isString } from "lodash";
 import { hasProp } from "./hasProp";
-import {Match} from "./match";
-import { Needle, testNeedle} from "./Policy";
+import { Match } from "./match";
+import { Needle, testNeedle } from "./Policy";
+
+const cwd = process.cwd();
 
 // see if our sequence of regexes all match the line
 const findInMatch = (needles: Needle[], match: Match): boolean => {
@@ -25,18 +27,23 @@ export const findInString = (path: string, needles: Needle[], haystack: string):
   const matchArray: Match[] = [];
   const lines = haystack.split(newLineRegExp);
   const needle = needles[0];
+  let pathToPrint = path;
+  if (pathToPrint.startsWith(cwd)) {
+    pathToPrint = pathToPrint.slice(cwd.length + 1, pathToPrint.length);
+  }
   lines.forEach((line, i) => {
     const number = i + 1;
+
     if (testNeedle(needle, line)) {
-      if (isString(needle)){
-          const retval: Match = {
-            line: line,
-            number,
-            match: needle,
-            path,
-          };
-          matchArray.push(retval);
-          return;
+      if (isString(needle)) {
+        const retval: Match = {
+          line: line,
+          number,
+          match: needle,
+          path: pathToPrint,
+        };
+        matchArray.push(retval);
+        return;
       }
 
       if (hasProp(needle, "reversed")) {
@@ -44,7 +51,7 @@ export const findInString = (path: string, needles: Needle[], haystack: string):
           line: line,
           number,
           match: line,
-          path,
+          path: pathToPrint,
         };
         matchArray.push(retval);
         return;
@@ -57,13 +64,13 @@ export const findInString = (path: string, needles: Needle[], haystack: string):
         line: line,
         number,
         match,
-        path,
+        path: pathToPrint,
       };
       matchArray.push(retval);
     }
   });
-  if (needles.length === 1 || matchArray.length === 0){
-      return matchArray;
+  if (needles.length === 1 || matchArray.length === 0) {
+    return matchArray;
   }
   return findInMatches(needles.slice(1), matchArray);
 };
