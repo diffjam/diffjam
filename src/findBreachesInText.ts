@@ -1,5 +1,5 @@
-import { flatten, compact } from "lodash";
 import { Config } from "./Config";
+import { GitIgnore } from "./GitIgnore";
 import { findFirstNeedle, Needle, Policy, testNeedle } from "./Policy";
 
 interface FileBreach {
@@ -32,21 +32,19 @@ const findPolicyBreachesInString = (policy: Policy, haystack: string): FileBreac
   const needles = policy.needles;
   const needle = needles[0];
   const message = policy.description;
-  const matches: FileBreach[] = compact(
-    lines.map((line, i) => {
-      const lineNumber = i + 1;
-      const found = findFirstNeedle(needle, line);
-      if (found) {
-        return {
-          found,
-          lineNumber,
-          wholeLine: line,
-          message,
-        };
-      }
-      return null;
-    }),
-  );
+  const matches: FileBreach[] = []
+  lines.forEach((line, i) => {
+    const lineNumber = i + 1;
+    const found = findFirstNeedle(needle, line);
+    if (found) {
+      matches.push({
+        found,
+        lineNumber,
+        wholeLine: line,
+        message,
+      });
+    }
+  });
   if (needles.length === 1 || matches.length === 0) {
     return matches;
   }
@@ -54,17 +52,18 @@ const findPolicyBreachesInString = (policy: Policy, haystack: string): FileBreac
 };
 
 // used by vs-code plugin
-export const findBreachesInText = async (filePath: string, text: string, conf?: Config): Promise<FileBreach[]> => {
-  if (!conf) {
-    conf = await Config.read("diffjam.yaml");
-  }
-
+export const findBreachesInText = (
+  filePath: string,
+  text: string,
+  conf: Config,
+  gitignore: GitIgnore
+): FileBreach[] => {
   const fileBreaches: FileBreach[] = [];
   for (const policy of Object.values(conf.policyMap)) {
+    if (gitignore.isIgnored(filePath)) continue;
     if (!policy.isFileUnderPolicy(filePath)) continue;
     const policyBreaches = findPolicyBreachesInString(policy, text);
     fileBreaches.push(...policyBreaches);
   }
-  return flatten(fileBreaches);
-
+  return fileBreaches;
 }

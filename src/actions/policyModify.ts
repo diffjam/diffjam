@@ -78,6 +78,7 @@ const actionPolicyDelete = async function (name: string, runner: Runner) {
   }
 
   runner.config.deletePolicy(`policies.${name}`);
+  await runner.config.write();
 };
 
 const actionHideFromOutput = async function (name: string, runner: Runner) {

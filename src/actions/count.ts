@@ -5,11 +5,9 @@ import envCi from 'env-ci';
 import gitRemoteOriginUrl from "git-remote-origin-url";
 import hostedGitInfo from "hosted-git-info";
 import { gitUrlToSlug } from "../git";
-import { Config, ConfigJson } from "../Config";
+import { ConfigJson } from "../Config";
 import { hasProp } from "../hasProp";
 import { clientVersion } from "../clientVersion";
-import { Flags } from "../flags";
-import { CurrentWorkingDirectory } from "../CurrentWorkingDirectory";
 import { Runner } from "../Runner";
 
 
@@ -133,7 +131,7 @@ async function commentResults(apiKey: string, config: ConfigJson, results: Resul
   }
 }
 
-export const actionCount = async function (flags: Flags, runner: Runner) {
+export const actionCount = async function (runner: Runner) {
   const clientVers = clientVersion();
   const start = new Date();
   const { breaches, successes, all } = await logResults(runner);
@@ -145,14 +143,14 @@ export const actionCount = async function (flags: Flags, runner: Runner) {
     };
   }
 
-  const verbose = Boolean(flags.verbose);
+  const verbose = Boolean(runner.flags.verbose);
 
   if (breaches.length) {
     logCheckFailedError();
   }
 
   // console.log("flags: ", flags);
-  if (!flags.record && !flags.ci) {
+  if (!runner.flags.record && !runner.flags.ci) {
 
     console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
     return;
@@ -177,11 +175,11 @@ export const actionCount = async function (flags: Flags, runner: Runner) {
   verbose && console.log("apiKey, config, results: ", apiKey, configJson, results);
 
 
-  if (flags.record) {
+  if (runner.flags.record) {
     await postMetrics(apiKey, configJson, results, clientVers);
   }
 
-  if (flags.ci) {
+  if (runner.flags.ci) {
     if (!envCi().isCi) {
       throw new Error(`could not detect CI environment`);
     }

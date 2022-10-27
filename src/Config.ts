@@ -44,9 +44,8 @@ export class Config {
     return this.policyMap[name];
   }
 
-  deletePolicy(name: string): Promise<void> {
+  deletePolicy(name: string): void {
     delete this.policyMap[name];
-    return this.write();
   }
 
   setPolicy(policy: Policy): void {

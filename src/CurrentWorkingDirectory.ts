@@ -1,20 +1,14 @@
 import { fdir } from "fdir";
-import { gitIgnoreToGlob } from "./gitIgnoreToGlob"
+import { GitIgnore } from "./GitIgnore"
 import mm from 'micromatch';
 import fs from "fs";
 import { join } from "path";
 
 export class CurrentWorkingDirectory {
-  gitignorePatterns: Promise<undefined | string[]>
+  gitignore: GitIgnore
 
   constructor(public cwd: string, gitIgnoreFileName: string = '.gitignore') {
-    const gitignoreFilePath = join(this.cwd, gitIgnoreFileName);
-    this.gitignorePatterns = new Promise((resolve) => {
-      fs.readFile(gitignoreFilePath, { encoding: "utf8" }, (err, fileContents) => {
-        if (err) return resolve(undefined);
-        resolve(gitIgnoreToGlob(fileContents));
-      })
-    });
+    this.gitignore = new GitIgnore(join(this.cwd, gitIgnoreFileName));
   }
 
   private filterFile(matchPatterns: string[], path: string, isDirectory: boolean): boolean {
@@ -29,10 +23,10 @@ export class CurrentWorkingDirectory {
       .crawl(this.cwd)
       .withPromise() as Promise<string[]>
 
-    const gitignorePatterns = await this.gitignorePatterns;
-    if (!gitignorePatterns) return gettingFiles;
+    await this.gitignore.ready;
+    if (!this.gitignore.gitignorePatterns) return gettingFiles;
 
     const files = await gettingFiles;
-    return files.filter(file => mm.all(file, gitignorePatterns));
+    return files.filter(file => !this.gitignore.isIgnored(file));
   }
 }

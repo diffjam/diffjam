@@ -1,5 +1,5 @@
-import { checkFilesAndAddMatches } from "../src/checkFilesAndAddMatches";
 import expect from "expect";
+import { checkFilesAndAddMatches } from "../src/checkFilesAndAddMatches";
 import { CurrentWorkingDirectory } from "../src/CurrentWorkingDirectory";
 import { Policy } from "../src/Policy";
 
