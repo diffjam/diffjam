@@ -1,4 +1,4 @@
-import { exists as fileExists, readFileSync, writeFileSync } from "mz/fs";
+import { exists as fileExists, readFile, writeFileSync } from "mz/fs";
 import { join } from "path";
 import { Config } from "./Config";
 import { Policy } from "./Policy";
@@ -24,19 +24,23 @@ export function exampleConfig(): Config {
   });
 }
 
-export async function refresh(file = defaultFilePath): Promise<Config> {
-  let fileContents
-  try {
-    fileContents = readFileSync(file).toString()
-  } catch (e) { }
-
-  if (fileContents) {
-    config = Config.fromYaml(fileContents);
-  } else {
-    config = new Config({});
-  }
-  configLoaded = true;
-  return config;
+export function refresh(file = defaultFilePath): Promise<Config> {
+  return new Promise((resolve, reject) => {
+    readFile(file, { encoding: "utf8" }, (err, fileContents) => {
+      if (err) {
+        config = new Config({});
+        configLoaded = true;
+        return resolve(config);
+      }
+      try {
+        config = Config.fromYaml(fileContents);
+        configLoaded = true;
+        return resolve(config);
+      } catch (e) {
+        return reject(e);
+      }
+    });
+  });
 }
 
 export async function getConfig(file = defaultFilePath): Promise<Config> {

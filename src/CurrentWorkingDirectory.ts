@@ -1,8 +1,8 @@
 import { fdir } from "fdir";
-import findup from 'findup-sync';
 import ignore from 'parse-gitignore';
 import mm from 'micromatch';
 import fs from "fs";
+import { join } from "path";
 
 export const cleanIgnorePatterns = (ignorePatterns: string[]) => {
   const retval = ignorePatterns.map((p) => {
@@ -19,28 +19,34 @@ export const cleanIgnorePatterns = (ignorePatterns: string[]) => {
 }
 
 export class CurrentWorkingDirectory {
-  gitignorePatterns: string[]
+  gitignorePatterns: Promise<undefined | string[]>
 
   constructor(public cwd: string) {
-    const gitignoreFile = findup('.gitignore', { cwd });
-    if (gitignoreFile) {
-      const fileContents = fs.readFileSync(gitignoreFile).toString();
-      this.gitignorePatterns = cleanIgnorePatterns(ignore(fileContents));
-    } else {
-      this.gitignorePatterns = [];
-    }
+    const gitignoreFilePath = join(this.cwd, '.gitignore');
+    this.gitignorePatterns = new Promise((resolve) => {
+      fs.readFile(gitignoreFilePath, { encoding: "utf8" }, (err, fileContents) => {
+        if (err) return resolve(undefined);
+        resolve(cleanIgnorePatterns(ignore(fileContents)))
+      })
+    });
   }
 
   private filterFile(matchPatterns: string[], path: string, isDirectory: boolean): boolean {
-    return !isDirectory && !mm.any(path, this.gitignorePatterns) && mm.any(path, matchPatterns);
+    return !isDirectory && mm.any(path, matchPatterns);
   }
 
-  allNonGitIgnoredFilesMatchingPatterns(patterns: string[]) {
-    return new fdir()
+  async allNonGitIgnoredFilesMatchingPatterns(patterns: string[]) {
+    const gettingDirs = new fdir()
       .withRelativePaths()
       .withErrors()
       .filter(this.filterFile.bind(this, patterns))
       .crawl(this.cwd)
-      .withPromise()
+      .withPromise() as Promise<string[]>
+
+    const gitignorePatterns = await this.gitignorePatterns;
+    if (!gitignorePatterns) return gettingDirs;
+
+    const dirs = await gettingDirs;
+    return dirs.filter(dir => !mm.any(dir, gitignorePatterns));
   }
 }

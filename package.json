@@ -4,6 +4,7 @@
   "description": "cli for diffjam.com",
   "scripts": {
     "build": "make clean && tsc",
+    "dev": "tsc -w",
     "test": "make test",
     "prepublishOnly": "make prepublish",
     "start": "ts-node index.ts"
