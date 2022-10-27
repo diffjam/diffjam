@@ -1,14 +1,6 @@
 import { isBoolean, isNumber, isString } from "lodash";
 import mm from 'micromatch';
 import { findInString } from "./findInString";
-
-// eslint-disable-next-line arrow-body-style
-const escapeStringRegexp = (str: string) => {
-  return str
-    .replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
-    .replace(/-/g, "\\x2d");
-};
-
 import { hasProp } from "./hasProp";
 import { Match } from "./match";
 import { ReverseRegExp } from "./ReverseRegExp";
@@ -27,6 +19,13 @@ export interface PolicyJson {
   hiddenFromOutput?: boolean;
 }
 
+// eslint-disable-next-line arrow-body-style
+const escapeStringRegexp = (str: string) => {
+  return str
+    .replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
+    .replace(/-/g, "\\x2d");
+};
+
 export const testNeedle = (needle: Needle, haystack: string): boolean => {
   if (isString(needle)) {
     return haystack.includes(needle);
@@ -44,6 +43,7 @@ export const findFirstNeedle = (needle: Needle, haystack: string): string | neve
 
 
 export class Policy {
+  public ran: boolean = false;
   public needles: Needle[] = [];
   public ignoreFilePatterns: undefined | string[];
   public filesToCheck: Set<string>;
@@ -82,26 +82,32 @@ export class Policy {
       filePattern: this.filePattern,
       search: this.search,
       baseline: this.baseline,
-      hiddenFromOutput: this.hiddenFromOutput,
     };
+    if (this.hiddenFromOutput) json.hiddenFromOutput = this.hiddenFromOutput;
     if (this.ignoreFilePatterns) json.ignoreFilePatterns = this.ignoreFilePatterns;
     return json
   }
 
-  fileUnderPolicy(filePath: string) {
-    const underPolicy = mm.any(filePath, this.filePattern) && (
+  isFileUnderPolicy(filePath: string): boolean {
+    return mm.any(filePath, this.filePattern) && (
       !this.ignoreFilePatterns ||
       !mm.any(filePath, this.ignoreFilePatterns)
     );
-    if (underPolicy) {
-      this.filesToCheck.add(filePath);
-    }
+  }
+
+  addFileToCheckIfUnderPolicy(filePath: string) {
+    const underPolicy = this.isFileUnderPolicy(filePath);
+    if (underPolicy) this.filesToCheck.add(filePath);
     return underPolicy;
   }
 
   processFile(filePath: string, fileContents: string) {
     const matches = findInString(filePath, this.needles, fileContents);
+    this.filesToCheck.delete(filePath);
     this.matches.push(...matches);
+    if (this.filesToCheck.size === 0) {
+      this.ran = true;
+    }
   }
 
   isCountAcceptable() {

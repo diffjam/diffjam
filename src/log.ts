@@ -1,13 +1,10 @@
 import chalk from "chalk";
 import { Policy } from "./Policy";
-import ProgressBar from 'progress';
-import { getResults } from "./getResults";
-import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
-import { Config } from "./Config";
 import { partition } from "lodash";
+import { Runner } from "./Runner";
 
 const RED_X = chalk.red("❌️");
-export const GREEN_CHECK = chalk.green("✔️");
+export const GREEN_CHECK = chalk.green("✅");
 
 export const logCheckFailedError = () => {
   console.error(`${RED_X} ${chalk.red.bold("Check failed.")}`);
@@ -33,7 +30,9 @@ const logBreachError = (breach: Policy) => {
   );
 
   const count = Math.min(10, breach.matches.length)
-  console.log(count > 1 ? `Violation:` : `Last ${count} examples:`)
+  if (breach.matches.length > 10) {
+    console.error("First 10 examples:")
+  }
   const examples = breach.matches.slice(0, count).map(b => `${b.path}:${b.number} - ${b.line}`)
   console.log(examples.join("\n"));
 
@@ -42,8 +41,8 @@ const logBreachError = (breach: Policy) => {
   }
 };
 
-export const logResults = async (conf: Config, cwd: CurrentWorkingDirectory) => {
-  const policies = await getResults(cwd, conf);
+export const logResults = async (runner: Runner) => {
+  const { policies, filesChecked } = await runner.checkFilesAndAddMatches();
 
   const [successes, breaches] = partition(policies, policy => policy.isCountAcceptable());
 
@@ -57,10 +56,13 @@ export const logResults = async (conf: Config, cwd: CurrentWorkingDirectory) => 
     }
   });
 
-  console.log("\n");
+  if (!breaches.length) {
+    console.log(`\n${GREEN_CHECK} ${chalk.bold(`All policies passed with ${filesChecked.length} matching files checked`)}`);
+  }
 
   return {
     successes,
-    breaches
+    breaches,
+    all: policies
   };
 };

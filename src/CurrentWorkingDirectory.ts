@@ -1,32 +1,18 @@
 import { fdir } from "fdir";
-import ignore from 'parse-gitignore';
+import { gitIgnoreToGlob } from "./gitIgnoreToGlob"
 import mm from 'micromatch';
 import fs from "fs";
 import { join } from "path";
 
-export const cleanIgnorePatterns = (ignorePatterns: string[]) => {
-  const retval = ignorePatterns.map((p) => {
-    if (p[0] && p[0] === "/") {
-      return p.slice(1, p.length);
-    }
-    const lastChar = p[p.length - 1];
-    if (lastChar && lastChar === "/") {
-      return p.slice(0, p.length - 1);
-    }
-    return p;
-  })
-  return retval;
-}
-
 export class CurrentWorkingDirectory {
   gitignorePatterns: Promise<undefined | string[]>
 
-  constructor(public cwd: string) {
-    const gitignoreFilePath = join(this.cwd, '.gitignore');
+  constructor(public cwd: string, gitIgnoreFileName: string = '.gitignore') {
+    const gitignoreFilePath = join(this.cwd, gitIgnoreFileName);
     this.gitignorePatterns = new Promise((resolve) => {
       fs.readFile(gitignoreFilePath, { encoding: "utf8" }, (err, fileContents) => {
         if (err) return resolve(undefined);
-        resolve(cleanIgnorePatterns(ignore(fileContents)))
+        resolve(gitIgnoreToGlob(fileContents));
       })
     });
   }
@@ -35,8 +21,8 @@ export class CurrentWorkingDirectory {
     return !isDirectory && mm.any(path, matchPatterns);
   }
 
-  async allNonGitIgnoredFilesMatchingPatterns(patterns: string[]) {
-    const gettingDirs = new fdir()
+  async allNonGitIgnoredFilesMatchingPatterns(patterns: string[]): Promise<string[]> {
+    const gettingFiles = new fdir()
       .withRelativePaths()
       .withErrors()
       .filter(this.filterFile.bind(this, patterns))
@@ -44,9 +30,9 @@ export class CurrentWorkingDirectory {
       .withPromise() as Promise<string[]>
 
     const gitignorePatterns = await this.gitignorePatterns;
-    if (!gitignorePatterns) return gettingDirs;
+    if (!gitignorePatterns) return gettingFiles;
 
-    const dirs = await gettingDirs;
-    return dirs.filter(dir => !mm.any(dir, gitignorePatterns));
+    const files = await gettingFiles;
+    return files.filter(file => mm.all(file, gitignorePatterns));
   }
 }

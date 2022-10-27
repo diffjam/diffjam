@@ -2,20 +2,18 @@
 
 // @ts-ignore
 import meow from "meow";
-import * as configFile from "./src/configFile";
-// import { clientVersion } from "./src/clientVersion";
 import { actionCheck } from "./src/actions/check";
-// import { actionCinch } from "./src/actions/cinch";
-// import { actionCount } from "./src/actions/count";
-import { actionInit } from "./src/actions/init";
-// import { actionNewPolicy } from "./src/actions/newPolicy";
-// import { actionRemovePolicy } from "./src/actions/remove";
-// import { actionPolicyModify } from "./src/actions/policyModify";
+import { actionCinch } from "./src/actions/cinch";
+import { actionCount } from "./src/actions/count";
+import { actionNewPolicy } from "./src/actions/newPolicy";
+import { actionRemovePolicy } from "./src/actions/remove";
+import { actionPolicyModify } from "./src/actions/policyModify";
 import { CurrentWorkingDirectory } from "./src/CurrentWorkingDirectory";
-import ProgressBar from "progress";
+import { Flags } from "./src/flags";
+import { join } from "path";
+import { Runner } from "./src/Runner";
+import { Config } from "./src/Config";
 // import { actionMainMenu } from "./src/actions/mainMenu";
-
-// const clientVers = clientVersion();
 
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
 // asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
@@ -28,32 +26,34 @@ process.on("unhandledRejection", (err: unknown) => {
 
 
 // run!
-const run = async function (action: string, policyName: string, flags: { dir?: string, config?: string; }) {
-  const dir = flags.dir || process.cwd();
+const run = async function (action: string, policyName: string, flags: Flags) {
+  const dir = process.cwd();
+  const configFilePath = flags.config || join(dir, "diffjam.yaml");
 
   // if (!action || action === "menu") {
   //   return actionMainMenu(clientVers, flags);
   // }
   if (action === "init") {
-    return actionInit(flags.config);
+    return Config.init(configFilePath);
   }
 
-  const conf = configFile.getConfig(flags.config);
   const cwd = new CurrentWorkingDirectory(dir);
+  const conf = Config.read(configFilePath);
+  const runner = new Runner(await conf, flags, cwd);
 
   switch (action) {
-    // case "add":
-    //   return actionNewPolicy(flags.config); // add a policy to the config
-    // case "remove":
-    //   return actionRemovePolicy(policyName, flags.config); // add a policy to the config
-    // case "modify":
-    //   return actionPolicyModify(policyName); // add a policy to the config
-    // case "count":
-    //   return actionCount(flags, clientVers); // run the policy counter
+    case "add":
+      return actionNewPolicy(runner); // add a policy to the config
+    case "remove":
+      return actionRemovePolicy(policyName, runner); // remove a policy to the config
+    case "modify":
+      return actionPolicyModify(policyName, runner); // add a policy to the config
+    case "count":
+      return actionCount(flags, runner); // run the policy counter
     case "check":
-      return actionCheck(await conf, cwd); // count + fail if warranted
-    // case "cinch":
-    //   return actionCinch(); // if there are no breaches, update the baselines to the strictest possible
+      return actionCheck(runner); // count + fail if warranted
+    case "cinch":
+      return actionCinch(runner); // if there are no breaches, update the baselines to the strictest possible
     default:
       throw new Error(`unknown action: ${action}`);
   }

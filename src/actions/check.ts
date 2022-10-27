@@ -1,9 +1,8 @@
-import { Config } from "../Config";
-import { CurrentWorkingDirectory } from "../CurrentWorkingDirectory";
 import { logCheckFailedError, logResults } from "../log";
+import { Runner } from "../Runner";
 
-export const actionCheck = async function (conf: Config, cwd: CurrentWorkingDirectory) {
-  const results = await logResults(conf, cwd);
+export const actionCheck = async function (runner: Runner) {
+  const results = await logResults(runner);
   const { breaches } = results;
 
   if (breaches.length) {

@@ -1,55 +1,55 @@
 
-// import * as configFile from "../configFile";
-// // import { countMatches, findMatches } from "../match";
-// import { Policy } from "../Policy";
-// import * as ui from "../ui";
+import { checkFilesAndAddMatches } from "../checkFilesAndAddMatches";
+import { Policy } from "../Policy";
+import { Runner } from "../Runner";
 
-// // create a policy
-// export const actionNewPolicy = async (filePath: string | undefined) => {
-//   const conf = await configFile.getConfig();
+// create a policy
+export const actionNewPolicy = async (runner: Runner) => {
+  // Requiring ui 
+  const ui = require("../ui");
 
-//   const name = await ui.textInput("Enter a name for this policy: ");
+  const name = await ui.textInput("Enter a name for this policy: ");
 
-//   const search = await ui.textInput(
-//     "Enter the search criteria for this policy: "
-//   );
+  const search = await ui.textInput(
+    "Enter the search criteria for this policy: "
+  );
 
-//   const filePattern = await ui.textInput(
-//     "Enter the filePattern to search for this policy: "
-//   );
+  const filePattern = await ui.textInput(
+    "Enter the filePattern to search for this policy: "
+  );
 
-//   const ignoreFilePatterns = []
-//   while (true) {
-//     const ignoreFilePattern = await ui.textInput(
-//       "Enter any filePatterns to ignore (or leave blank to continue): "
-//     );
+  const ignoreFilePatterns = []
+  while (true) {
+    const ignoreFilePattern = await ui.textInput(
+      "Enter any filePatterns to ignore (or leave blank to continue): "
+    );
 
-//     if (ignoreFilePattern.trim()) {
-//       ignoreFilePatterns.push(ignoreFilePattern);
-//     } else {
-//       break;
-//     }
-//   }
+    if (ignoreFilePattern.trim()) {
+      ignoreFilePatterns.push(ignoreFilePattern);
+    } else {
+      break;
+    }
+  }
 
-//   const policy = new Policy(name, "", filePattern, [search], 0, ignoreFilePatterns);
+  const policy = new Policy(name, "", filePattern, [search], 0, ignoreFilePatterns);
 
-//   policy.description = await ui.textInput(
-//     "Give a description for this policy: "
-//   );
+  policy.description = await ui.textInput(
+    "Give a description for this policy: "
+  );
 
-//   // const count = countMatches(await policy.findMatches());
+  runner.config.setPolicy(policy);
+  await runner.checkFilesAndAddMatchesForPolicy(policy.name)
+  policy.baseline = policy.matches.length;
 
-//   // policy.baseline = count;
+  if (
+    await ui.confirm(
+      `There are currently ${policy.baseline} matches for that configuration. Save it?`
+    )
+  ) {
 
-//   // if (
-//   //   await ui.confirm(
-//   //     `There are currently ${count} matches for that configuration. Save it?`
-//   //   )
-//   // ) {
-//   //   conf.setPolicy(name, policy);
-//   //   configFile.writeConfig(conf, filePath);
-//   //   console.log("Saved!");
-//   // } else {
-//   //   console.log("Cancelled save.");
-//   // }
-// }
+    runner.config.write();
+    console.log("Saved!");
+  } else {
+    console.log("Cancelled save.");
+  }
+}

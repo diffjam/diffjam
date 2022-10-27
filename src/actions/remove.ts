@@ -1,16 +1,13 @@
 
-import * as configFile from "../configFile";
+import { Runner } from "../Runner";
 
-export const actionRemovePolicy = async function (name: string, filePath: string | undefined) {
-  const conf = await configFile.getConfig();
-  const policy = conf.getPolicy(name);
+export const actionRemovePolicy = async function (policyName: string, runner: Runner) {
+  const policy = runner.config.getPolicy(policyName);
 
   if (!policy) {
-    console.error("There was no policy named: ", name);
+    console.error("There was no policy named: ", policyName);
     return process.exit(1);
   }
 
-  conf.deletePolicy(name);
-
-  configFile.writeConfig(conf, filePath);
+  runner.config.deletePolicy(policyName);
 };
