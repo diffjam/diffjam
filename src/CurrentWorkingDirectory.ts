@@ -12,6 +12,7 @@ export class CurrentWorkingDirectory {
   }
 
   private filterFile(matchPatterns: string[], path: string, isDirectory: boolean): boolean {
+    // if (!isDirectory) console.log(path);
     return !isDirectory && mm.any(path, matchPatterns);
   }
 
@@ -25,6 +26,8 @@ export class CurrentWorkingDirectory {
 
     await this.gitignore.ready;
     if (!this.gitignore.gitignorePatterns) return gettingFiles;
+
+    console.log('this.gitignore.gitignorePatterns', this.gitignore.gitignorePatterns)
 
     const files = await gettingFiles;
     return files.filter(file => !this.gitignore.isIgnored(file));

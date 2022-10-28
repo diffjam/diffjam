@@ -1,20 +1,21 @@
-import { isBoolean, isNumber, isString } from "lodash";
+import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
-import { findInString } from "./findInString";
+import { File } from "./File";
 import { hasProp } from "./hasProp";
 import { Match } from "./match";
-import { ReverseRegExp } from "./ReverseRegExp";
 
-export type StringOrRegexp = string | RegExp;
-export type Needle = RegExp | ReverseRegExp | string;
 const regexPrefix = "regex:";
 const inversePrefix = "-:";
 
+export type Needles = {
+  positive: RegExp;
+  negative: string[];
+}
 export interface PolicyJson {
   description: string;
   filePattern: string;
   ignoreFilePatterns?: string[];
-  search: string[];
+  search: string | string[];
   baseline: number;
   hiddenFromOutput?: boolean;
 }
@@ -26,14 +27,7 @@ const escapeStringRegexp = (str: string) => {
     .replace(/-/g, "\\x2d");
 };
 
-export const testNeedle = (needle: Needle, haystack: string): boolean => {
-  if (isString(needle)) {
-    return haystack.includes(needle);
-  }
-  return needle.test(haystack);
-}
-
-export const findFirstNeedle = (needle: Needle, haystack: string): string | never => {
+export const findFirstNeedle = (needle: RegExp, haystack: string): string | never => {
   if (isString(needle) && haystack.indexOf(needle) !== -1) {
     return needle;
   }
@@ -44,11 +38,10 @@ export const findFirstNeedle = (needle: Needle, haystack: string): string | neve
 
 export class Policy {
   public ran: boolean = false;
-  public needles: Needle[] = [];
+  public needles: Needles
   public ignoreFilePatterns: undefined | string[];
   public filesToCheck: Set<string>;
   public matches: Match[];
-  // public matchCount: number;
 
   constructor(
     public name: string,
@@ -62,7 +55,7 @@ export class Policy {
     this.needles = Policy.searchConfigToNeedles(this.search);
     this.description = description;
     this.filePattern = filePattern;
-    this.search = search;
+    this.search = Array.isArray(search) ? search : [search];
     this.baseline = baseline;
     this.hiddenFromOutput = hiddenFromOutput;
     if (ignoreFilePatterns && ignoreFilePatterns.length) {
@@ -80,7 +73,7 @@ export class Policy {
     const json: PolicyJson = {
       description: this.description,
       filePattern: this.filePattern,
-      search: this.search,
+      search: this.search.length === 1 ? this.search[0] : this.search,
       baseline: this.baseline,
     };
     if (this.hiddenFromOutput) json.hiddenFromOutput = this.hiddenFromOutput;
@@ -101,40 +94,44 @@ export class Policy {
     return underPolicy;
   }
 
-  processFile(filePath: string, fileContents: string) {
-    const matches = findInString(filePath, this.needles, fileContents);
-    this.filesToCheck.delete(filePath);
+  processFile(file: File) {
+    if (!this.filesToCheck.has(file.path)) return;
+    const matches = file.findMatches(this.needles);
+    this.filesToCheck.delete(file.path);
     this.matches.push(...matches);
     if (this.filesToCheck.size === 0) {
       this.ran = true;
     }
   }
 
-  isCountAcceptable() {
+  isCountAcceptable(): boolean {
     return this.matches.length <= this.baseline;
   }
 
-  isCountCinchable() {
+  isCountCinchable(): boolean {
     return this.matches.length < this.baseline;
   }
 
-  static searchConfigToNeedles(search: string[]): Needle[] {
-    // optimization? inverse strings don't need to be regexes
-    const needles = search.map((i: string) => {
-      if (!i.startsWith(regexPrefix) && !i.startsWith(inversePrefix)) {
-        // return i;
-        return new RegExp(escapeStringRegexp(i));
+  static searchConfigToNeedles(search: string[]): Needles {
+    const [inverseTerms, positiveTerms] = partition(search, term => term.startsWith(inversePrefix));
+    const [regexTerms, simplePositiveTerms] = partition(positiveTerms, term => term.startsWith(regexPrefix));
+
+    if (regexTerms.length) {
+      if (inverseTerms.length) {
+        console.error(`regex search terms (${regexTerms[0]}) cannot be combined with negative search terms (${inverseTerms[0]})`);
+        process.exit(1);
       }
-      if (i.startsWith(inversePrefix)) {
-        const startIndex = inversePrefix.length;
-        const inverseString = i.slice(startIndex);
-        return new ReverseRegExp(escapeStringRegexp(inverseString));
-      }
-      const startIndex = regexPrefix.length;
-      const regexString = i.slice(startIndex);
-      return new RegExp(regexString);
-    });
-    return needles;
+    }
+
+    const allTerms = regexTerms
+      .map(term => term.slice(regexPrefix.length))
+      .concat(simplePositiveTerms.map(escapeStringRegexp))
+      .join("|")
+
+    return {
+      positive: new RegExp(`(${allTerms})`, "mg"),
+      negative: inverseTerms.map(term => term.slice(inversePrefix.length)),
+    }
   }
 
   static fromJson(name: string, obj: any): Policy {
@@ -169,6 +166,7 @@ export class Policy {
       console.error("obj: ", obj);
       throw new Error("missing hiddenFromOutput");
     }
+
     return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
   }
 }

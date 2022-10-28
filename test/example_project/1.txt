@@ -1,1 +1,2 @@
 hamster
+console.log("yeah")

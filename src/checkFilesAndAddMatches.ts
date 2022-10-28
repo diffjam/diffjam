@@ -2,6 +2,7 @@ import { map } from "bluebird";
 import { readFile } from "fs"
 import { join } from "path";
 import { Policy } from "./Policy";
+import { File } from "./File";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./flags";
 
@@ -18,8 +19,17 @@ export const checkFilesAndAddMatches = async (
   const policyList = Object.values(policies)
   policyList.forEach(policy => patternsToMatch.add(policy.filePattern))
 
-  const filesMatchingAnyPattern: string[] = await currentWorkingDirectory.allNonGitIgnoredFilesMatchingPatterns(Array.from(patternsToMatch)) as string[]
+  console.log(policyList);
 
+  const filesMatchingAnyPattern = await currentWorkingDirectory.allNonGitIgnoredFilesMatchingPatterns(Array.from(patternsToMatch))
+
+  console.log(filesMatchingAnyPattern)
+
+  // While a file may have matched a given pattern, the ignoreFilePatterns may
+  // have excluded it from the policy. So we only include files that match at
+  // least one policy. This step also adds the files to the policy's filesToCheck
+  // so we don't have to retest whether a file is under a policy later and we can
+  // be sure we've checked all files under a policy.
   const filesAtLeastOnePolicyNeedsToCheck = filesMatchingAnyPattern.filter(file => {
     let fileUnderPolicy = false
     for (const policy of policies) {
@@ -28,22 +38,22 @@ export const checkFilesAndAddMatches = async (
       }
     }
     return fileUnderPolicy;
-  });
+  }).sort();
 
+  // We can now process the files we know to be relevant in parallel.
+  // 
   await map(filesAtLeastOnePolicyNeedsToCheck, (filePath: string) => {
     if (flags.verbose) console.log("checking", filePath)
-    const interestedPolicies = policies.filter(policy => policy.filesToCheck.has(filePath))
 
     return new Promise<void>((resolve, reject) => {
       readFile(join(currentWorkingDirectory.cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
-        if (err) reject(err);
-        interestedPolicies.forEach(policy => {
-          policy.processFile(filePath, fileContents);
-        })
+        if (err) return reject(err);
+        const file = new File(filePath, fileContents);
+        policies.forEach(policy => policy.processFile(file))
         resolve();
       })
     })
-  }, { concurrency: 10 });
+  }, { concurrency: 8 });
 
   return {
     policies,

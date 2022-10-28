@@ -17,7 +17,14 @@ export class GitIgnore {
 
   isIgnored(file: string): boolean {
     if (!this.gitignorePatterns) return false;
-    return !mm.all(file, this.gitignorePatterns);
+    const ret = !mm.all(file, this.gitignorePatterns);
+    for (const pattern of this.gitignorePatterns) {
+      if (!mm.any(file, pattern)) {
+        console.log(file, pattern)
+      }
+    }
+
+    return ret;
   }
 }
 

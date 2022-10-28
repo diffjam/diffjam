@@ -120,8 +120,7 @@ describe("Config", () => {
     baseline: 0
     description: description
     filePattern: '*.ts'
-    search:
-      - TODO
+    search: TODO
 `
       );
     });

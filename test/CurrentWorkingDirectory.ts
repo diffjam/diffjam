@@ -11,7 +11,7 @@ describe("CurrentWorkingDirectory", () => {
       "**/*.*",
     ])
 
-    expect(files).toEqual(["1.txt", "2.txt", "nested/1.txt", "nested/2.txt"])
+    expect(files).toEqual(["1.txt", "2.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"])
   });
 
   it("can match provided patterns", async () => {
@@ -22,6 +22,6 @@ describe("CurrentWorkingDirectory", () => {
       "**/1.txt"
     ])
 
-    expect(files).toEqual(["1.txt", "nested/1.txt", "nested/2.txt"])
+    expect(files).toEqual(["1.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"])
   });
 });
