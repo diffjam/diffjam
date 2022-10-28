@@ -1,30 +1,30 @@
 import mm from 'micromatch';
 import fs from "fs";
+import { partition } from 'lodash';
 
 export class GitIgnore {
   ready: Promise<void>
-  gitignorePatterns: undefined | string[]
+  patterns: undefined | {
+    positive: string[]
+    include: string[]
+  }
 
   constructor(public gitIgnoreFileName: string = '.gitignore') {
     this.ready = new Promise<void>((resolve) => {
       fs.readFile(gitIgnoreFileName, { encoding: "utf8" }, (err, fileContents) => {
         if (err) return resolve(undefined);
-        this.gitignorePatterns = gitIgnoreToGlob(fileContents)
+        const patterns = gitIgnoreToGlob(fileContents)
+
+        const [positive, include] = partition(patterns, pattern => pattern.startsWith("!"));
+        this.patterns = { positive, include };
         resolve();
       })
     });
   }
 
   isIgnored(file: string): boolean {
-    if (!this.gitignorePatterns) return false;
-    const ret = !mm.all(file, this.gitignorePatterns);
-    for (const pattern of this.gitignorePatterns) {
-      if (!mm.any(file, pattern)) {
-        console.log(file, pattern)
-      }
-    }
-
-    return ret;
+    if (!this.patterns) return false;
+    return !mm.all(file, this.patterns.positive) || mm.any(file, this.patterns.include);
   }
 }
 

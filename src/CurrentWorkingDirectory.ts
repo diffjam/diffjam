@@ -1,8 +1,7 @@
 import { fdir } from "fdir";
-import { GitIgnore } from "./GitIgnore"
 import mm from 'micromatch';
-import fs from "fs";
 import { join } from "path";
+import { GitIgnore } from "./GitIgnore"
 
 export class CurrentWorkingDirectory {
   gitignore: GitIgnore
@@ -12,7 +11,6 @@ export class CurrentWorkingDirectory {
   }
 
   private filterFile(matchPatterns: string[], path: string, isDirectory: boolean): boolean {
-    // if (!isDirectory) console.log(path);
     return !isDirectory && mm.any(path, matchPatterns);
   }
 
@@ -25,9 +23,7 @@ export class CurrentWorkingDirectory {
       .withPromise() as Promise<string[]>
 
     await this.gitignore.ready;
-    if (!this.gitignore.gitignorePatterns) return gettingFiles;
-
-    console.log('this.gitignore.gitignorePatterns', this.gitignore.gitignorePatterns)
+    if (!this.gitignore.patterns) return gettingFiles;
 
     const files = await gettingFiles;
     return files.filter(file => !this.gitignore.isIgnored(file));

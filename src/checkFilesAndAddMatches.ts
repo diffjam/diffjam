@@ -19,11 +19,7 @@ export const checkFilesAndAddMatches = async (
   const policyList = Object.values(policies)
   policyList.forEach(policy => patternsToMatch.add(policy.filePattern))
 
-  console.log(policyList);
-
   const filesMatchingAnyPattern = await currentWorkingDirectory.allNonGitIgnoredFilesMatchingPatterns(Array.from(patternsToMatch))
-
-  console.log(filesMatchingAnyPattern)
 
   // While a file may have matched a given pattern, the ignoreFilePatterns may
   // have excluded it from the policy. So we only include files that match at
