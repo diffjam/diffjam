@@ -40,6 +40,14 @@ export class Config {
     return new Config(policyMap, filePath);
   }
 
+  static fromJson(json: ConfigJson, filePath: string) {
+    const policyMap: PolicyMap = {};
+    for (const key of Object.keys(json.policies)) {
+      policyMap[key] = Policy.fromJson(key, json.policies[key]);
+    }
+    return new Config(policyMap, filePath);
+  }
+
   getPolicy(name: string): Policy {
     return this.policyMap[name];
   }

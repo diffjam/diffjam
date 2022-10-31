@@ -38,13 +38,13 @@ const logBreachError = (breach: Policy) => {
   const longestFilePath = maxBy(examples, example => example.breachPath.length)!.breachPath.length
 
   const exampleLog = examples
-    .map(b => `${b.breachPath}${" ".repeat(longestFilePath - b.breachPath.length)} ${b.startWholeLineFormatted}`)
+    .map(b => `${chalk.magenta(b.breachPath)}${" ".repeat(longestFilePath - b.breachPath.length)} ${b.startWholeLineFormatted}`)
     .join("\n")
 
   console.log(exampleLog);
 
   if (breach.description) {
-    console.error(chalk.magenta(breach.description));
+    console.error(chalk.yellow(breach.description));
   }
 };
 

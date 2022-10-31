@@ -37,8 +37,10 @@
     "@types/js-yaml": "^4.0.3",
     "@types/lodash": "^4.14.175",
     "@types/meow": "^6.0.0",
+    "@types/micromatch": "^4.0.2",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.11.1",
+    "@types/nodegit": "^0.27.10",
     "axios": "0.18.0",
     "bluebird": "^3.7.2",
     "chalk": "2.4.1",
@@ -52,6 +54,8 @@
     "meow": "5.0.0",
     "micromatch": "^4.0.4",
     "mz": "2.7.0",
+    "nodegit": "^0.27.0",
+    "regex-combiner": "^1.0.1",
     "urlgrey": "^0.4.4"
   },
   "devDependencies": {

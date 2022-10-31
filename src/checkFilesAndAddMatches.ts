@@ -1,14 +1,9 @@
-import { map } from "bluebird";
-import { Writable } from "stream";
 import { readFile } from "fs"
 import { join } from "path";
 import { Policy } from "./Policy";
-import { File } from "./File";
+import { FileMatcher } from "./FileMatcher";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./flags";
-import { Worker } from 'worker_threads';
-import { spawn } from "node:child_process";
-import { createInterface } from "node:readline";
 
 
 // Note: this function is mutative, adding matches to the provided policies
@@ -31,8 +26,10 @@ export const checkFilesAndAddMatches = async (
       inProgress++;
       readFile(join(currentWorkingDirectory.cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
         if (err) return reject(err);
-        const file = new File(filePath, fileContents);
-        policies.forEach(policy => policy.processFile(file))
+        const fileMatcher = new FileMatcher(filePath, fileContents, policies);
+        fileMatcher.findMatches();
+
+        // policies.forEach(policy => policy.processFile(file))
         filesChecked.push(filePath);
         inProgress--;
         if (queued.length) {

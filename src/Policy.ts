@@ -1,6 +1,6 @@
 import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
-import { File } from "./File";
+import { FileMatcher } from "./FileMatcher";
 import { hasProp } from "./hasProp";
 import { Match } from "./match";
 
@@ -20,12 +20,11 @@ export interface PolicyJson {
   hiddenFromOutput?: boolean;
 }
 
-// eslint-disable-next-line arrow-body-style
-const escapeStringRegexp = (str: string) => {
-  return str
+const escapeStringRegexp = (str: string) =>
+  str
     .replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
     .replace(/-/g, "\\x2d");
-};
+
 
 export const findFirstNeedle = (needle: RegExp, haystack: string): string | never => {
   if (isString(needle) && haystack.indexOf(needle) !== -1) {
@@ -94,15 +93,16 @@ export class Policy {
     return underPolicy;
   }
 
-  processFile(file: File) {
-    if (!this.filesToCheck.has(file.path)) return;
-    const matches = file.findMatches(this.needles);
-    this.filesToCheck.delete(file.path);
-    this.matches.push(...matches);
-    if (this.filesToCheck.size === 0) {
-      this.ran = true;
-    }
-  }
+  // processFile(file: FileMatcher) {
+  //   if (!this.filesToCheck.has(file.path)) return;
+  //   const matches = file.findMatches(this.needles);
+
+  //   this.filesToCheck.delete(file.path);
+  //   this.matches.push(...matches);
+  //   if (this.filesToCheck.size === 0) {
+  //     this.ran = true;
+  //   }
+  // }
 
   isCountAcceptable(): boolean {
     return this.matches.length <= this.baseline;
@@ -129,7 +129,7 @@ export class Policy {
       .join("|")
 
     return {
-      positive: new RegExp(`(${allTerms})`, "mg"),
+      positive: new RegExp(`(${allTerms})`),
       negative: inverseTerms.map(term => term.slice(inversePrefix.length)),
     }
   }
