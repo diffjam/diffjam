@@ -1,10 +1,15 @@
 import { map } from "bluebird";
+import { Writable } from "stream";
 import { readFile } from "fs"
 import { join } from "path";
 import { Policy } from "./Policy";
 import { File } from "./File";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./flags";
+import { Worker } from 'worker_threads';
+import { spawn } from "node:child_process";
+import { createInterface } from "node:readline";
+
 
 // Note: this function is mutative, adding matches to the provided policies
 export const checkFilesAndAddMatches = async (
@@ -15,44 +20,48 @@ export const checkFilesAndAddMatches = async (
   policies: Policy[],
   filesChecked: string[],
 }> => {
-  const patternsToMatch = new Set<string>()
-  const policyList = Object.values(policies)
-  policyList.forEach(policy => patternsToMatch.add(policy.filePattern))
 
-  const filesMatchingAnyPattern = await currentWorkingDirectory.allNonGitIgnoredFilesMatchingPatterns(Array.from(patternsToMatch))
+  return new Promise<any>((resolve, reject) => {
+    let inProgress = 0;
+    let closed = false
+    const queued: string[] = [];
+    const filesChecked: string[] = []
 
-  // While a file may have matched a given pattern, the ignoreFilePatterns may
-  // have excluded it from the policy. So we only include files that match at
-  // least one policy. This step also adds the files to the policy's filesToCheck
-  // so we don't have to retest whether a file is under a policy later and we can
-  // be sure we've checked all files under a policy.
-  const filesAtLeastOnePolicyNeedsToCheck = filesMatchingAnyPattern.filter(file => {
-    let fileUnderPolicy = false
-    for (const policy of policies) {
-      if (policy.addFileToCheckIfUnderPolicy(file)) {
-        fileUnderPolicy = true
-      }
-    }
-    return fileUnderPolicy;
-  }).sort();
-
-  // We can now process the files we know to be relevant in parallel.
-  // 
-  await map(filesAtLeastOnePolicyNeedsToCheck, (filePath: string) => {
-    if (flags.verbose) console.log("checking", filePath)
-
-    return new Promise<void>((resolve, reject) => {
+    function processFile(filePath: string) {
+      inProgress++;
       readFile(join(currentWorkingDirectory.cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
         if (err) return reject(err);
         const file = new File(filePath, fileContents);
         policies.forEach(policy => policy.processFile(file))
-        resolve();
+        filesChecked.push(filePath);
+        inProgress--;
+        if (queued.length) {
+          processFile(queued.shift()!);
+        } else if (closed) {
+          resolve({ policies, filesChecked });
+        }
       })
-    })
-  }, { concurrency: 8 });
+    }
 
-  return {
-    policies,
-    filesChecked: filesAtLeastOnePolicyNeedsToCheck
-  }
+    currentWorkingDirectory.allNonGitIgnoredFiles(filePath => {
+      let fileUnderPolicy = false
+      for (const policy of policies) {
+        if (policy.addFileToCheckIfUnderPolicy(filePath)) {
+          fileUnderPolicy = true
+        }
+      }
+      if (fileUnderPolicy) {
+        if (inProgress < 8) {
+          processFile(filePath);
+        } else {
+          queued.push(filePath);
+        }
+      }
+    }, () => {
+      closed = true;
+      if (inProgress === 0) {
+        resolve({ policies, filesChecked });
+      }
+    })
+  })
 };

@@ -1,31 +1,28 @@
 import { fdir } from "fdir";
 import mm from 'micromatch';
 import { join } from "path";
-import { GitIgnore } from "./GitIgnore"
+import { spawn } from "child_process"
+import { readline } from "mz";
 
 export class CurrentWorkingDirectory {
-  gitignore: GitIgnore
+  // gitignore: GitIgnore
 
   constructor(public cwd: string, gitIgnoreFileName: string = '.gitignore') {
-    this.gitignore = new GitIgnore(join(this.cwd, gitIgnoreFileName));
+    // this.gitignore = new GitIgnore(join(this.cwd, gitIgnoreFileName));
   }
 
-  private filterFile(matchPatterns: string[], path: string, isDirectory: boolean): boolean {
-    return !isDirectory && mm.any(path, matchPatterns);
+  private filterFile(path: string, isDirectory: boolean): boolean {
+    return !isDirectory
   }
 
-  async allNonGitIgnoredFilesMatchingPatterns(patterns: string[]): Promise<string[]> {
-    const gettingFiles = new fdir()
-      .withRelativePaths()
-      .withErrors()
-      .filter(this.filterFile.bind(this, patterns))
-      .crawl(this.cwd)
-      .withPromise() as Promise<string[]>
+  async allNonGitIgnoredFiles(onFile: (path: string) => void, onClose: () => void): Promise<void> {
+    const x = spawn("git", ["ls-tree", "-r", "master", "--name-only"]);
 
-    await this.gitignore.ready;
-    if (!this.gitignore.patterns) return gettingFiles;
+    const nonGitIgnoredFiles = readline.createInterface({
+      input: x.stdout,
+    })
 
-    const files = await gettingFiles;
-    return files.filter(file => !this.gitignore.isIgnored(file));
+    nonGitIgnoredFiles.on("line", onFile);
+    nonGitIgnoredFiles.on("close", onClose)
   }
 }
