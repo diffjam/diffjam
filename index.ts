@@ -1,25 +1,13 @@
 #!/usr/bin/env node
 
-// @ts-ignore
-import meow from "meow";
 import { join } from "node:path";
 import cluster from "node:cluster"
-// import { actionCheck } from "./src/actions/check";
-// import { actionCinch } from "./src/actions/cinch";
-// import { actionCount } from "./src/actions/count";
-// import { actionNewPolicy } from "./src/actions/newPolicy";
-// import { actionRemovePolicy } from "./src/actions/remove";
-// import { actionPolicyModify } from "./src/actions/policyModify";
-// import { actionMainMenu } from "./src/actions/mainMenu";
-
 import { CurrentWorkingDirectory } from "./src/CurrentWorkingDirectory";
-import { Flags } from "./src/flags";
-import { File } from "./src/File";
+import { cli, Flags } from "./src/cli";
 import { Config } from "./src/Config";
-import { readFile } from "node:fs";
-import { ResultsMap } from "./src/match";
 import { logResults } from "./src/log";
 import { Runner } from "./src/Runner";
+import { workerProcess } from "./src/workerProcess";
 
 
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
@@ -31,40 +19,6 @@ process.on("unhandledRejection", (err: unknown) => {
 });
 
 if (cluster.isPrimary) {
-  const cli = meow(
-    `
-      Usage
-        $ diffjam <action>
-
-      Examples
-        $ diffjam init
-        $ diffjam add
-        $ diffjam check
-        $ diffjam cinch
-        $ diffjam count
-        $ diffjam modify [name]
-        $ diffjam remove [name]
-  `,
-    {
-      flags: {
-        config: {
-          type: "string",
-          alias: "c"
-        },
-        verbose: {
-          type: "boolean",
-          alias: "v"
-        },
-        record: {
-          type: "boolean",
-          alias: "r"
-        },
-        ci: {
-          type: "boolean",
-        }
-      }
-    }
-  );
 
   // run!
   const run = async function (action: string, policyName: string, flags: Flags) {
@@ -75,60 +29,38 @@ if (cluster.isPrimary) {
       return Config.init(configFilePath);
     }
 
-
     const cwd = new CurrentWorkingDirectory(dir);
     const conf = Config.read(configFilePath);
 
     const config = await conf;
-    const runner = new Runner(config, flags, cwd, logResults);
+    const runner = new Runner(config, flags, cwd);
+
+    switch (action) {
+      case "check":
+        return runner.check(); // count + fail if warranted
+      case "cinch":
+        return runner.cinch(); // if there are no breaches, update the baselines to the strictest possible
+      case "add":
+        return runner.addPolicy(); // add a policy to the config
+      case "remove":
+        return runner.removePolicy(policyName); // remove a policy to the config
+      case "modify":
+        return runner.modifyPolicy(policyName); // add a policy to the config
+      case "count":
+        return runner.count(); // run the policy counter
+      case "bump":
+        return runner.bump();
+      // case "menu":
+      //   return actionMainMenu(runner); // show the main menu
+      default:
+        console.error(`unknown command: ${action}`);
+        console.error(cli.help);
+        process.exit(1);
+    }
   };
 
   // eslint-disable-next-line no-void
   void run(cli.input[0], cli.input[1], cli.flags);
 } else {
-  const main = async () => {
-    let confReady = false;
-    const cwd = new CurrentWorkingDirectory(process.cwd());
-    const conf = Config.read(process.env.configFilePath!);
-
-    const processingFiles = new Set<string>();
-    const queued: string[] = [];
-
-    function processFile(filePath: string) {
-      processingFiles.add(filePath);
-
-      readFile(join(cwd.cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
-        if (err) throw err;
-        const file = new File(filePath, fileContents);
-        policies.forEach(policy => {
-          policy.processFile(file, match => {
-            process.send!({
-              type: "match",
-              policyName: policy.name,
-              match,
-            })
-          });
-        });
-        processingFiles.delete(filePath);
-        process.send!({ type: "processedFile", filePath });
-      })
-    }
-
-    process.on("message", (message: any) => {
-      const { filePath } = message
-      if (!confReady) return queued.push(filePath);
-      processFile(filePath);
-    });
-
-    const config = await conf;
-    confReady = true;
-    const policies = Object.values(config.policyMap);
-
-    let filePath
-    while (filePath = queued.shift()) {
-      processFile(filePath);
-    }
-  }
-
-  main()
+  workerProcess(process);
 }

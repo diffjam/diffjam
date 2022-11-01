@@ -85,9 +85,9 @@ export class Policy {
     );
   }
 
-  processFile(file: File, onMatch: (match: Match) => void): void {
+  processFile(file: File, onMatch: (match: Match, policy: this) => void): void {
     if (!this.isFileUnderPolicy(file.path)) return;
-    return file.findMatches(this.needles, onMatch);
+    return file.findMatches(this.needles, match => onMatch(match, this));
   }
 
   isCountAcceptable(matches: Match[]): boolean {

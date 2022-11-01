@@ -1,8 +1,5 @@
 import chalk from "chalk";
-import { Policy } from "./Policy";
 import { maxBy, partition } from "lodash";
-// import { Runner } from "./Runner";
-import { Config } from "./Config";
 import { Result, ResultsMap } from "./match";
 
 const RED_X = chalk.red("❌️");
@@ -51,7 +48,8 @@ const logBreachError = (breach: Result) => {
 };
 
 export const logResults = (resultsMap: ResultsMap, filesChecked: string[]) => {
-  const [successes, breaches] = partition(Object.values(resultsMap), ({ policy, matches }) => policy.isCountAcceptable(matches));
+  const all = Object.values(resultsMap);
+  const [successes, breaches] = partition(all, ({ policy, matches }) => policy.isCountAcceptable(matches));
 
   breaches.forEach((b) => {
     logBreachError(b);
@@ -63,12 +61,9 @@ export const logResults = (resultsMap: ResultsMap, filesChecked: string[]) => {
     }
   });
 
-  if (!breaches.length) {
-    console.log(`\n${GREEN_CHECK} ${chalk.bold(`All policies passed with ${filesChecked.length} matching files checked`)}`);
-  }
-
   return {
     breaches,
     successes,
+    all,
   }
 };
