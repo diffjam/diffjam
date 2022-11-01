@@ -239,6 +239,10 @@ export class Runner {
 
     this.config.setPolicy(policy);
     this.policies = [policy];
+    this.workerPool.resultsMap[policy.name] = {
+      policy,
+      matches: []
+    };
 
     this.workerPool.onResults = async () => {
       const { matches } = this.workerPool.resultsMap[policy.name];
@@ -259,7 +263,7 @@ export class Runner {
     this.run();
   }
 
-  removePolicy(policyName: string) {
+  async removePolicy(policyName: string) {
     const policy = this.config.getPolicy(policyName);
 
     if (!policy) {
@@ -267,7 +271,7 @@ export class Runner {
       return process.exit(1);
     }
 
-    this.config.deletePolicy(policyName);
+    await this.config.deletePolicy(policyName);
   }
 
   modifyPolicy(policyName: string) {

@@ -29,29 +29,31 @@ if (cluster.isPrimary) {
       return Config.init(configFilePath);
     }
 
-    const workerPool = new WorkerPool(configFilePath, dir);
+    async function createRunner() {
+      const workerPool = new WorkerPool(configFilePath, dir);
 
-    const cwd = new CurrentWorkingDirectory(dir);
-    const conf = Config.read(configFilePath);
+      const cwd = new CurrentWorkingDirectory(dir);
+      const conf = Config.read(configFilePath);
 
-    const config = await conf;
-    const runner = new Runner(config, flags, cwd, workerPool);
+      const config = await conf;
+      return new Runner(config, flags, cwd, workerPool);
+    }
 
     switch (action) {
       case "check":
-        return runner.check(); // count + fail if warranted
+        return (await createRunner()).check(); // count + fail if warranted
       case "cinch":
-        return runner.cinch(); // if there are no breaches, update the baselines to the strictest possible
+        return (await createRunner()).cinch(); // if there are no breaches, update the baselines to the strictest possible
       case "add":
-        return runner.addPolicy(); // add a policy to the config
+        return (await createRunner()).addPolicy(); // add a policy to the config
       case "remove":
-        return runner.removePolicy(policyName); // remove a policy to the config
+        return (await createRunner()).removePolicy(policyName); // remove a policy to the config
       case "modify":
-        return runner.modifyPolicy(policyName); // add a policy to the config
+        return (await createRunner()).modifyPolicy(policyName); // add a policy to the config
       case "count":
-        return runner.count(); // run the policy counter
+        return (await createRunner()).count(); // run the policy counter
       case "bump":
-        return runner.bump();
+        return (await createRunner()).bump();
       // case "menu":
       //   return actionMainMenu(runner); // show the main menu
       default:
