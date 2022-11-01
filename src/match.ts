@@ -1,3 +1,5 @@
+import { Policy } from "./Policy";
+
 export interface Match {
   startLineNumber: number; // the startLineNumber, 1-indexed
   endLineNumber: number; // the ending line number, 1-indexed
@@ -22,4 +24,14 @@ export interface FileBreach {
   severity: 1
 }
 
-export type MatchDict = { [filePath: string]: Match[] };
+export type Result = {
+  policy: Policy
+  matches: Match[]
+}
+
+export type ResultsMap = {
+  [policyName: string]: {
+    policy: Policy
+    matches: Match[]
+  },
+};

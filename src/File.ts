@@ -75,7 +75,6 @@ export class File {
         breachPath
       });
     }
-
     return matchArray;
   }
 }

@@ -2,7 +2,7 @@ import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
 import { File } from "./File";
 import { hasProp } from "./hasProp";
-import { Match } from "./match";
+import { Match, ResultsMap } from "./match";
 
 const regexPrefix = "regex:";
 const inversePrefix = "-:";
@@ -41,8 +41,6 @@ export class Policy {
   public ran: boolean = false;
   public needles: Needles
   public ignoreFilePatterns: undefined | string[];
-  public filesToCheck: Set<string>;
-  public matches: Match[];
 
   constructor(
     public name: string,
@@ -66,8 +64,6 @@ export class Policy {
         this.ignoreFilePatterns = ignoreFilePatterns;
       }
     }
-    this.filesToCheck = new Set<string>();
-    this.matches = [];
   }
 
   toJson(): PolicyJson {
@@ -89,29 +85,17 @@ export class Policy {
     );
   }
 
-  addFileToCheckIfUnderPolicy(filePath: string) {
-    const underPolicy = this.isFileUnderPolicy(filePath);
-    if (underPolicy) this.filesToCheck.add(filePath);
-    return underPolicy;
+  processFile(file: File): Match[] {
+    if (!this.isFileUnderPolicy(file.path)) return [];
+    return file.findMatches(this.needles);
   }
 
-  processFile(file: File) {
-    if (!this.filesToCheck.has(file.path)) return;
-    const matches = file.findMatches(this.needles);
-
-    this.filesToCheck.delete(file.path);
-    this.matches.push(...matches);
-    if (this.filesToCheck.size === 0) {
-      this.ran = true;
-    }
+  isCountAcceptable(matches: Match[]): boolean {
+    return matches.length <= this.baseline;
   }
 
-  isCountAcceptable(): boolean {
-    return this.matches.length <= this.baseline;
-  }
-
-  isCountCinchable(): boolean {
-    return this.matches.length < this.baseline;
+  isCountCinchable(matches: Match[]): boolean {
+    return matches.length < this.baseline;
   }
 
   // The array of search strings should include at least one positive term to search for

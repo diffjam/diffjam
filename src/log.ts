@@ -1,7 +1,9 @@
 import chalk from "chalk";
 import { Policy } from "./Policy";
 import { maxBy, partition } from "lodash";
-import { Runner } from "./Runner";
+// import { Runner } from "./Runner";
+import { Config } from "./Config";
+import { Result, ResultsMap } from "./match";
 
 const RED_X = chalk.red("❌️");
 export const GREEN_CHECK = chalk.green("✅");
@@ -11,21 +13,21 @@ export const logCheckFailedError = () => {
 };
 
 
-export const logPolicyResult = (policy: Policy) => {
-  if (!policy.isCountAcceptable()) {
+export const logPolicyResult = (result: Result) => {
+  if (!result.policy.isCountAcceptable(result.matches)) {
     return console.error(
-      `${RED_X} ${chalk.red.bold(policy.name)}: ${policy.matches.length} (expected ${policy.baseline
+      `${RED_X} ${chalk.red.bold(result.policy.name)}: ${result.matches.length} (expected ${result.policy.baseline
       } or fewer)`
     );
   }
   return console.log(
-    `${GREEN_CHECK} ${chalk.bold(policy.name)}: ${policy.matches.length}`
+    `${GREEN_CHECK} ${chalk.bold(result.policy.name)}: ${result.matches.length}`
   );
 };
 
-const logBreachError = (breach: Policy) => {
+const logBreachError = (breach: Result) => {
   console.error(
-    `${RED_X} ${chalk.red.bold(breach.name)}: ${breach.matches.length} (expected ${breach.baseline
+    `${RED_X} ${chalk.red.bold(breach.policy.name)}: ${breach.matches.length} (expected ${breach.policy.baseline
     } or fewer)`
   );
 
@@ -43,22 +45,20 @@ const logBreachError = (breach: Policy) => {
 
   console.log(exampleLog);
 
-  if (breach.description) {
-    console.error(chalk.yellow(breach.description));
+  if (breach.policy.description) {
+    console.error(chalk.yellow(breach.policy.description));
   }
 };
 
-export const logResults = async (runner: Runner) => {
-  const { policies, filesChecked } = await runner.checkFilesAndAddMatches();
-
-  const [successes, breaches] = partition(policies, policy => policy.isCountAcceptable());
+export const logResults = (resultsMap: ResultsMap, filesChecked: string[]) => {
+  const [successes, breaches] = partition(Object.values(resultsMap), ({ policy, matches }) => policy.isCountAcceptable(matches));
 
   breaches.forEach((b) => {
     logBreachError(b);
   });
 
   successes.forEach((s) => {
-    if (!s.hiddenFromOutput) {
+    if (!s.policy.hiddenFromOutput) {
       logPolicyResult(s);
     }
   });
@@ -68,8 +68,7 @@ export const logResults = async (runner: Runner) => {
   }
 
   return {
-    successes,
     breaches,
-    all: policies
-  };
+    successes,
+  }
 };
