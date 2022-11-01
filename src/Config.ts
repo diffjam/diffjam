@@ -48,7 +48,7 @@ export class Config {
     return new Config(policyMap, filePath);
   }
 
-  getPolicy(name: string): Policy {
+  getPolicy(name: string): Policy | undefined {
     return this.policyMap[name];
   }
 

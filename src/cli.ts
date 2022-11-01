@@ -20,7 +20,7 @@ export const cli = meow(
       $ diffjam cinch
       $ diffjam bump
       $ diffjam count
-      $ diffjam modify [name]
+      $ diffjam modify
       $ diffjam remove [name]
 `,
   {

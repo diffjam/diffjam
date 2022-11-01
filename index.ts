@@ -52,7 +52,7 @@ if (cluster.isPrimary) {
       case "remove":
         return (await createRunner()).removePolicy(policyName); // remove a policy to the config
       case "modify":
-        return (await createRunner({ syncWorkerPool: true })).modifyPolicy(policyName); // add a policy to the config
+        return (await createRunner({ syncWorkerPool: true })).modifyPolicy(); // add a policy to the config
       case "count":
         return (await createRunner()).count(); // run the policy counter
       case "bump":

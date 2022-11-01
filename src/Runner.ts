@@ -7,7 +7,8 @@ import { Policy } from "./Policy";
 import { GREEN_CHECK, logCheckFailedError, logResults } from "./log";
 import { clientVersion } from "./clientVersion";
 import { commentResults, postMetrics, ResultMap } from "./count";
-import { ResultsMap } from './match';
+import { Result, ResultsMap } from './match';
+import { actionPolicyModify } from './actions/policyModify';
 
 interface WorkerPool {
   resultsMap: ResultsMap;
@@ -20,7 +21,7 @@ export class Runner {
   private policies: Policy[];
 
   constructor(
-    private config: Config,
+    public config: Config,
     private flags: Flags,
     private cwd: CurrentWorkingDirectory,
     private workerPool: WorkerPool
@@ -245,7 +246,6 @@ export class Runner {
     };
 
     this.workerPool.onResults = async () => {
-      console.log("ZZZ", this.workerPool);
       const { matches } = this.workerPool.resultsMap[policy.name];
       policy.baseline = matches.length;
 
@@ -264,6 +264,22 @@ export class Runner {
     this.run();
   }
 
+  async runSinglePolicy(policyName: string) {
+    const policy = this.config.getPolicy(policyName);
+    if (!policy) {
+      throw new Error(`Could not find policy ${policyName}`);
+    }
+
+    const promise = new Promise<Result>((resolve) => {
+      this.workerPool.onResults = () => {
+        resolve(this.workerPool.resultsMap[policyName]);
+      }
+    })
+
+    this.run();
+    return promise;
+  }
+
   async removePolicy(policyName: string) {
     const policy = this.config.getPolicy(policyName);
 
@@ -275,8 +291,8 @@ export class Runner {
     await this.config.deletePolicy(policyName);
   }
 
-  modifyPolicy(policyName: string) {
-
+  modifyPolicy() {
+    return actionPolicyModify(this);
   }
 
   private processFile(filePath: string) {
