@@ -1,6 +1,6 @@
 import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
-import { File } from "./File";
+import { FileMatcher } from "./FileMatcher";
 import { hasProp } from "./hasProp";
 import { Match, ResultsMap } from "./match";
 
@@ -85,7 +85,7 @@ export class Policy {
     );
   }
 
-  processFile(file: File, onMatch: (match: Match, policy: this) => void): void {
+  processFile(file: FileMatcher, onMatch: (match: Match, policy: this) => void): void {
     if (!this.isFileUnderPolicy(file.path)) return;
     return file.findMatches(this.needles, match => onMatch(match, this));
   }

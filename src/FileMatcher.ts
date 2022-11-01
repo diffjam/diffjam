@@ -5,7 +5,7 @@ import { Needles } from "./Policy";
 
 const newLineRegExp = new RegExp("\n", "gm");
 
-export class File {
+export class FileMatcher {
   private newLineIndexes: number[];
 
   constructor(public path: string, public contents: string) {

@@ -4,6 +4,9 @@ import { fdir } from "fdir";
 import { join } from "path";
 import { GitIgnore } from "./GitIgnore"
 
+// Supports adding a single listener who will be called on each file found and when the search is complete.
+// Uses git ls-tree by default, falling back to fdir if git is not available or this isn't a git repo.
+// We maintain a queue for if files are available before the listener is ready.
 export class CurrentWorkingDirectory {
   queue: string[] = [];
   closed = false;
@@ -79,7 +82,7 @@ export class CurrentWorkingDirectory {
       this.queue = [];
     }
     if (this.closed) {
-      onClose();
+      this.listener.onClose();
     }
   }
 }

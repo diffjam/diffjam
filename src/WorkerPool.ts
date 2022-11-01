@@ -3,10 +3,12 @@ import cluster, { Worker } from "node:cluster";
 import { Message } from "./workerProcess";
 import { ResultsMap } from './match';
 
+type WorkerEntry = { worker: Worker, inProgress: Set<string> }
+
 export class WorkerPool {
   private closed: boolean = false;
   private queued: string[] = [];
-  private workers: { worker: Worker, inProgress: Set<string> }[] = [];
+  private workers: WorkerEntry[] = [];
 
   public filesChecked: string[] = [];
   public resultsMap: ResultsMap = {};
@@ -29,6 +31,8 @@ export class WorkerPool {
       cwd: this.cwd,
     });
 
+    const workerEntry = { worker, inProgress };
+
     worker.on("message", (msg: Message) => {
       if (msg.type === "match") {
         this.resultsMap[msg.policyName].matches.push(msg.match);
@@ -40,16 +44,20 @@ export class WorkerPool {
         inProgress.delete(msg.filePath);
 
         if (this.queued.length) {
-          const filePath = this.queued.shift()!;
-          inProgress.add(filePath)
-          worker.send({ type: "processFile", filePath });
-        } else if (this.closed && this.workers.every(w => !w.inProgress.size)) {
+          this.checkFile(workerEntry, this.queued.shift()!);
+        } else if (this.closed && this.workers.every(({ inProgress }) => !inProgress.size)) {
           this.onDone();
         }
       }
     })
 
-    this.workers.push({ worker, inProgress });
+    this.workers.push(workerEntry);
+  }
+
+  private checkFile(worker: WorkerEntry, filePath: string) {
+    this.filesChecked.push(filePath);
+    worker.inProgress.add(filePath)
+    worker.worker.send({ type: "processFile", filePath });
   }
 
   public processFile(filePath: string) {
@@ -57,8 +65,7 @@ export class WorkerPool {
     if (!worker) {
       this.queued.push(filePath);
     } else {
-      worker.inProgress.add(filePath)
-      worker.worker.send({ type: "processFile", filePath });
+      this.checkFile(worker, filePath);
     }
   }
 

@@ -3,7 +3,7 @@ import { Runner } from "../src/Runner";
 import { CurrentWorkingDirectory } from "../src/CurrentWorkingDirectory";
 import { Policy } from "../src/Policy";
 import { Config } from "../src/Config";
-import { SameThreadWorkerPool } from "../src/SingleThreadWorkerPool";
+import { SingleThreadWorkerPool } from "../src/SingleThreadWorkerPool";
 
 describe("Runner", () => {
   it("searches a project, finding the results for the provided policies", done => {
@@ -40,7 +40,7 @@ describe("Runner", () => {
       fireAndForgetMustBeAwaitedPolicy,
     }, "diffjam.yaml")
 
-    const workerPool = new SameThreadWorkerPool(
+    const workerPool = new SingleThreadWorkerPool(
       config,
       currentWorkingDirectory.cwd
     )
@@ -52,7 +52,7 @@ describe("Runner", () => {
       workerPool
     );
 
-    (runner as any).onResults = () => {
+    (runner as any).workerPool.onResults = () => {
 
       expect((runner as any).workerPool.filesChecked.sort()).toEqual(["2.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"]);
 

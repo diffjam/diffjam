@@ -1,6 +1,6 @@
 import { Config } from "./Config";
 import { GitIgnore } from "./GitIgnore";
-import { File } from "./File";
+import { FileMatcher } from "./FileMatcher";
 import { FileBreach } from "./match";
 
 
@@ -12,7 +12,7 @@ export const findBreachesInText = (
   gitignore: GitIgnore
 ): FileBreach[] => {
   const fileBreaches: FileBreach[] = [];
-  const file = new File(filePath, text);
+  const file = new FileMatcher(filePath, text);
   for (const policy of Object.values(conf.policyMap)) {
     if (gitignore.isIgnored(filePath)) continue;
     if (!policy.isFileUnderPolicy(filePath)) continue;

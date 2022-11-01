@@ -8,6 +8,7 @@ import { Config } from "./src/Config";
 import { Runner } from "./src/Runner";
 import { workerProcess } from "./src/workerProcess";
 import { WorkerPool } from "./src/WorkerPool";
+import { SingleThreadWorkerPool } from "./src/SingleThreadWorkerPool";
 
 
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
@@ -29,14 +30,16 @@ if (cluster.isPrimary) {
       return Config.init(configFilePath);
     }
 
-    async function createRunner() {
-      const workerPool = new WorkerPool(configFilePath, dir);
+    // Some actions modify the config file, so for those we use a worker pool
+    // in the same thread so that when we modify it the new policy is available
+    async function createRunner(opts: { syncWorkerPool?: boolean } = {}) {
+      const workerPool = !opts.syncWorkerPool && new WorkerPool(configFilePath, dir);
 
       const cwd = new CurrentWorkingDirectory(dir);
       const conf = Config.read(configFilePath);
 
       const config = await conf;
-      return new Runner(config, flags, cwd, workerPool);
+      return new Runner(config, flags, cwd, workerPool || new SingleThreadWorkerPool(config, dir));
     }
 
     switch (action) {
@@ -45,11 +48,11 @@ if (cluster.isPrimary) {
       case "cinch":
         return (await createRunner()).cinch(); // if there are no breaches, update the baselines to the strictest possible
       case "add":
-        return (await createRunner()).addPolicy(); // add a policy to the config
+        return (await createRunner({ syncWorkerPool: true })).addPolicy(); // add a policy to the config
       case "remove":
         return (await createRunner()).removePolicy(policyName); // remove a policy to the config
       case "modify":
-        return (await createRunner()).modifyPolicy(policyName); // add a policy to the config
+        return (await createRunner({ syncWorkerPool: true })).modifyPolicy(policyName); // add a policy to the config
       case "count":
         return (await createRunner()).count(); // run the policy counter
       case "bump":

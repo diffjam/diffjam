@@ -39,7 +39,7 @@ export class Runner {
     this.cwd.allNonGitIgnoredFiles(
       this.processFile.bind(this),
       this.workerPool.onFilesDone.bind(this.workerPool)
-    )
+    );
   }
 
   check() {
@@ -231,11 +231,11 @@ export class Runner {
       }
     }
 
-    const policy = new Policy(name, "", filePattern, [search, ...negativeSearchTerms], 0, ignoreFilePatterns);
-
-    policy.description = await ui.textInput(
+    const description = await ui.textInput(
       "Give a description for this policy: "
     );
+
+    const policy = new Policy(name, description, filePattern, [search, ...negativeSearchTerms], 0, ignoreFilePatterns);
 
     this.config.setPolicy(policy);
     this.policies = [policy];
@@ -245,6 +245,7 @@ export class Runner {
     };
 
     this.workerPool.onResults = async () => {
+      console.log("ZZZ", this.workerPool);
       const { matches } = this.workerPool.resultsMap[policy.name];
       policy.baseline = matches.length;
 
@@ -281,7 +282,6 @@ export class Runner {
   private processFile(filePath: string) {
     const isUnderPolicy = this.policies.some(policy => policy.isFileUnderPolicy(filePath));
     if (!isUnderPolicy) return;
-    this.workerPool.filesChecked.push(filePath);
     this.workerPool.processFile(filePath);
   }
 }

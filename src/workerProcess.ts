@@ -4,7 +4,7 @@ import { Config } from "./Config";
 import { Match } from "./match";
 import { Policy } from "./Policy";
 import { readFile } from "fs";
-import { File } from "./File";
+import { FileMatcher } from "./FileMatcher";
 
 export type Message =
   | { type: "match", policyName: string, match: Match }
@@ -14,14 +14,16 @@ export type Message =
 export function processFile(
   filePath: string,
   cwd: string,
-  policies: Policy[],
+  config: Config,
   onMatch: (match: Match, policy: Policy) => void,
   onDone: (filePath: string) => void,
 ) {
   readFile(join(cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
     if (err) throw err;
-    const file = new File(filePath, fileContents);
-    policies.forEach(policy => policy.processFile(file, onMatch));
+    const file = new FileMatcher(filePath, fileContents);
+    for (const policy of Object.values(config.policyMap)) {
+      policy.processFile(file, onMatch);
+    }
     onDone(filePath);
   })
 }
@@ -32,11 +34,9 @@ export function readyWorker(
   onMatch: (match: Match, policy: Policy) => void,
   onDone: (filePath: string) => void,
 ) {
-  const policies = Object.values(config.policyMap);
-
   return {
     processFile(filePath: string) {
-      processFile(filePath, cwd, policies, onMatch, onDone);
+      processFile(filePath, cwd, config, onMatch, onDone);
     }
   }
 }

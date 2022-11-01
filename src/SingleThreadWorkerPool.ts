@@ -4,7 +4,7 @@ import { Config } from './Config';
 
 // Looks like a worker pool, but operates in the same thread
 // used for testing purposes
-export class SameThreadWorkerPool {
+export class SingleThreadWorkerPool {
   private closed: boolean = false;
 
   private inProgress = new Set<string>();
@@ -23,23 +23,24 @@ export class SameThreadWorkerPool {
     }, (filePath: string) => {
       this.inProgress.delete(filePath);
       if (this.queued.length) {
-        const filePath = this.queued.shift()!;
-        this.filesChecked.push(filePath);
-        this.inProgress.add(filePath);
-        this.worker.processFile(filePath);
+        this.checkFile(this.queued.shift()!);
       } else if (this.closed && !this.inProgress.size) {
         this.onResults();
       }
     });
   }
 
+  checkFile(filePath: string) {
+    this.filesChecked.push(filePath);
+    this.inProgress.add(filePath);
+    this.worker.processFile(filePath);
+  }
+
   processFile(filePath: string): void {
     if (this.inProgress.size >= 3) {
       this.queued.push(filePath);
     } else {
-      this.filesChecked.push(filePath);
-      this.inProgress.add(filePath);
-      this.worker.processFile(filePath);
+      this.checkFile(filePath);
     }
   }
 
