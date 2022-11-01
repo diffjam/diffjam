@@ -1,12 +1,30 @@
-import cluster from "cluster";
+import { join } from "node:path";
+import cluster from "node:cluster";
 import { Config } from "./Config";
 import { Match } from "./match";
 import { Policy } from "./Policy";
-import { processFile } from "./processFile";
+import { readFile } from "fs";
+import { File } from "./File";
 
 export type Message =
   | { type: "match", policyName: string, match: Match }
   | { type: "processedFile", filePath: string }
+
+
+export function processFile(
+  filePath: string,
+  cwd: string,
+  policies: Policy[],
+  onMatch: (match: Match, policy: Policy) => void,
+  onDone: (filePath: string) => void,
+) {
+  readFile(join(cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
+    if (err) throw err;
+    const file = new File(filePath, fileContents);
+    policies.forEach(policy => policy.processFile(file, onMatch));
+    onDone(filePath);
+  })
+}
 
 export function readyWorker(
   config: Config,
@@ -28,8 +46,8 @@ export async function workerProcess() {
 
   let confReady = false;
   const queued: string[] = [];
-  const conf = Config.read(process.env.configFilePath!);
 
+  const conf = Config.read(process.env.configFilePath!);
   const cwd = process.env.cwd!;
 
   // We may receive messages while still loading the config.

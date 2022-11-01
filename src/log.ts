@@ -9,7 +9,6 @@ export const logCheckFailedError = () => {
   console.error(`\n${RED_X} ${chalk.red.bold("Check failed.")}`);
 };
 
-
 export const logPolicyResult = (result: Result) => {
   if (!result.policy.isCountAcceptable(result.matches)) {
     return console.error(

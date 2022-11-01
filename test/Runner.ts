@@ -3,6 +3,7 @@ import { Runner } from "../src/Runner";
 import { CurrentWorkingDirectory } from "../src/CurrentWorkingDirectory";
 import { Policy } from "../src/Policy";
 import { Config } from "../src/Config";
+import { SameThreadWorkerPool } from "../src/SingleThreadWorkerPool";
 
 describe("Runner", () => {
   it("searches a project, finding the results for the provided policies", done => {
@@ -33,21 +34,29 @@ describe("Runner", () => {
       0,
     )
 
+    const config = new Config({
+      noHamsterPolicy,
+      noConsoleLogPolicy,
+      fireAndForgetMustBeAwaitedPolicy,
+    }, "diffjam.yaml")
+
+    const workerPool = new SameThreadWorkerPool(
+      config,
+      currentWorkingDirectory.cwd
+    )
+
     const runner = new Runner(
-      new Config({
-        noHamsterPolicy,
-        noConsoleLogPolicy,
-        fireAndForgetMustBeAwaitedPolicy,
-      }, "diffjam.yaml"),
+      config,
       {},
-      currentWorkingDirectory
+      currentWorkingDirectory,
+      workerPool
     );
 
     (runner as any).onResults = () => {
 
-      expect(runner.filesChecked.sort()).toEqual(["2.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"]);
+      expect((runner as any).workerPool.filesChecked.sort()).toEqual(["2.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"]);
 
-      expect(runner.resultsMap.noHamsterPolicy.matches).toEqual([
+      expect((runner as any).workerPool.resultsMap.noHamsterPolicy.matches).toEqual([
         {
           startLineNumber: 0,
           endLineNumber: 0,
@@ -94,7 +103,7 @@ describe("Runner", () => {
         },
       ]);
 
-      expect(runner.resultsMap.noConsoleLogPolicy.matches).toEqual([
+      expect((runner as any).workerPool.resultsMap.noConsoleLogPolicy.matches).toEqual([
         {
           startLineNumber: 0,
           endLineNumber: 2,
@@ -108,7 +117,7 @@ describe("Runner", () => {
         }
       ]);
 
-      expect(runner.resultsMap.fireAndForgetMustBeAwaitedPolicy.matches).toEqual([
+      expect((runner as any).workerPool.resultsMap.fireAndForgetMustBeAwaitedPolicy.matches).toEqual([
         {
           startLineNumber: 1,
           endLineNumber: 1,

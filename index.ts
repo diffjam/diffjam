@@ -5,9 +5,9 @@ import cluster from "node:cluster"
 import { CurrentWorkingDirectory } from "./src/CurrentWorkingDirectory";
 import { cli, Flags } from "./src/cli";
 import { Config } from "./src/Config";
-import { logResults } from "./src/log";
 import { Runner } from "./src/Runner";
 import { workerProcess } from "./src/workerProcess";
+import { WorkerPool } from "./src/WorkerPool";
 
 
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
@@ -29,11 +29,13 @@ if (cluster.isPrimary) {
       return Config.init(configFilePath);
     }
 
+    const workerPool = new WorkerPool(configFilePath, dir);
+
     const cwd = new CurrentWorkingDirectory(dir);
     const conf = Config.read(configFilePath);
 
     const config = await conf;
-    const runner = new Runner(config, flags, cwd);
+    const runner = new Runner(config, flags, cwd, workerPool);
 
     switch (action) {
       case "check":

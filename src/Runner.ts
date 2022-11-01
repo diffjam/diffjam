@@ -1,37 +1,34 @@
-import { cpus } from 'node:os';
-import cluster, { Worker } from "node:cluster";
 import envCi from 'env-ci';
 import chalk from "chalk";
 import { Config } from "./Config";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./cli";
 import { Policy } from "./Policy";
-import { ResultsMap } from "./match";
 import { GREEN_CHECK, logCheckFailedError, logResults } from "./log";
 import { clientVersion } from "./clientVersion";
 import { commentResults, postMetrics, ResultMap } from "./count";
-import { Message, readyWorker } from "./workerProcess";
+import { ResultsMap } from './match';
 
+interface WorkerPool {
+  resultsMap: ResultsMap;
+  filesChecked: string[];
+  processFile(filePath: string): void;
+  onFilesDone(): void;
+  onResults(): void;
+}
 export class Runner {
-  public closed: boolean = false;
-  public filesChecked: string[] = [];
-  public queued: string[] = [];
-  public policies: Policy[];
-  public workers: { worker: Worker, inProgress: Set<string> }[] = [];
-  public resultsMap: ResultsMap = {};
-  public worker: any;
-  private onResults: () => void = () => { };
+  private policies: Policy[];
 
   constructor(
-    public config: Config,
-    public flags: Flags,
-    public cwd: CurrentWorkingDirectory,
+    private config: Config,
+    private flags: Flags,
+    private cwd: CurrentWorkingDirectory,
+    private workerPool: WorkerPool
   ) {
-
     this.policies = Object.values(config.policyMap);
 
     for (const policyName in config.policyMap) {
-      this.resultsMap[policyName] = {
+      this.workerPool.resultsMap[policyName] = {
         policy: config.policyMap[policyName],
         matches: [],
       };
@@ -39,41 +36,20 @@ export class Runner {
   }
 
   private run() {
-    const numCpus = cpus().length;
-    if (cluster.isPrimary && numCpus > 1) {
-      for (let i = 0; i < numCpus; i++) {
-        this.createWorker();
-      }
-    } else {
-      const inProgress = new Set();
-      const worker = readyWorker(this.config, this.cwd.cwd, (match, policy) => {
-        this.resultsMap[policy.name].matches.push(match);
-      }, (filePath: string) => {
-        inProgress.delete(filePath);
-        if (this.closed && !inProgress.size) {
-          this.onResults();
-        }
-      })
-      this.worker = {
-        worker,
-        inProgress,
-      }
-    }
-
     this.cwd.allNonGitIgnoredFiles(
       this.processFile.bind(this),
-      this.onFilesDone.bind(this)
+      this.workerPool.onFilesDone.bind(this.workerPool)
     )
   }
 
   check() {
-    this.onResults = () => {
-      const { breaches } = logResults(this.resultsMap, this.filesChecked);
+    this.workerPool.onResults = () => {
+      const { breaches } = logResults(this.workerPool.resultsMap, this.workerPool.filesChecked);
       if (breaches.length) {
         logCheckFailedError();
         process.exitCode = 1;
       } else {
-        console.log(`\n${GREEN_CHECK} ${chalk.bold(`All policies passed with ${this.filesChecked.length} matching files checked`)}`);
+        console.log(`\n${GREEN_CHECK} ${chalk.bold(`All policies passed with ${this.workerPool.filesChecked.length} matching files checked`)}`);
       }
     }
 
@@ -84,8 +60,8 @@ export class Runner {
     const clientVers = clientVersion();
     const start = new Date();
 
-    this.onResults = async () => {
-      const { breaches, successes, all } = logResults(this.resultsMap, this.filesChecked);
+    this.workerPool.onResults = async () => {
+      const { breaches, successes, all } = logResults(this.workerPool.resultsMap, this.workerPool.filesChecked);
 
       const results: ResultMap = {};
       for (const result of all) {
@@ -143,8 +119,8 @@ export class Runner {
   }
 
   cinch() {
-    this.onResults = () => {
-      const { breaches, successes } = logResults(this.resultsMap, this.filesChecked);
+    this.workerPool.onResults = () => {
+      const { breaches, successes } = logResults(this.workerPool.resultsMap, this.workerPool.filesChecked);
       console.log();
 
       if (breaches.length > 0) {
@@ -181,8 +157,8 @@ export class Runner {
   }
 
   bump() {
-    this.onResults = () => {
-      const { breaches } = logResults(this.resultsMap, this.filesChecked);
+    this.workerPool.onResults = () => {
+      const { breaches } = logResults(this.workerPool.resultsMap, this.workerPool.filesChecked);
       console.log();
 
       for (const breach of breaches) {
@@ -264,8 +240,8 @@ export class Runner {
     this.config.setPolicy(policy);
     this.policies = [policy];
 
-    this.onResults = async () => {
-      const { matches } = this.resultsMap[policy.name];
+    this.workerPool.onResults = async () => {
+      const { matches } = this.workerPool.resultsMap[policy.name];
       policy.baseline = matches.length;
 
       if (
@@ -298,66 +274,10 @@ export class Runner {
 
   }
 
-  private createWorker() {
-    const inProgress = new Set<string>();
-    const worker = cluster.fork({
-      configFilePath: this.config.filePath,
-      cwd: this.cwd.cwd,
-    });
-    worker.on("message", (msg: Message) => {
-      if (msg.type === "match") {
-        this.resultsMap[msg.policyName].matches.push(msg.match);
-      } else if (msg.type === "processedFile") {
-        if (!inProgress.has(msg.filePath)) {
-          throw new Error('file not in progress: ' + msg.filePath)
-        }
-
-        inProgress.delete(msg.filePath);
-
-        if (this.queued.length) {
-          const filePath = this.queued.shift()!;
-          inProgress.add(filePath)
-          worker.send({ type: "processFile", filePath });
-        } else if (this.closed && this.workers.every(w => !w.inProgress.size)) {
-          this.onDone();
-        }
-      }
-    })
-    this.workers.push({ worker, inProgress });
-  }
-
   private processFile(filePath: string) {
     const isUnderPolicy = this.policies.some(policy => policy.isFileUnderPolicy(filePath));
     if (!isUnderPolicy) return;
-
-    this.filesChecked.push(filePath);
-    if (cluster.isPrimary) {
-      const worker = this.workers.find(w => w.inProgress.size < 3);
-      if (!worker) {
-        this.queued.push(filePath);
-      } else {
-        worker.inProgress.add(filePath)
-        worker.worker.send({ type: "processFile", filePath });
-      }
-    } else {
-      this.worker.inProgress.add(filePath);
-      this.worker.worker.processFile(filePath);
-    }
-  }
-
-  private onDone() {
-    this.workers.forEach(({ worker }) => worker.kill());
-    this.onResults();
-  }
-
-  private onFilesDone() {
-    this.closed = true;
-    if (this.worker) {
-      if (!this.worker.inProgress.size) {
-        this.onDone();
-      }
-    } else if (this.workers.every(w => !w.inProgress.size)) {
-      this.onDone();
-    }
+    this.workerPool.filesChecked.push(filePath);
+    this.workerPool.processFile(filePath);
   }
 }
