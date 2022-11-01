@@ -62,5 +62,5 @@ if (cluster.isPrimary) {
   // eslint-disable-next-line no-void
   void run(cli.input[0], cli.input[1], cli.flags);
 } else {
-  workerProcess(process);
+  workerProcess();
 }

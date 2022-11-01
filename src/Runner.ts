@@ -1,12 +1,13 @@
+import { cpus } from 'node:os';
+import cluster, { Worker } from "node:cluster";
 import envCi from 'env-ci';
+import chalk from "chalk";
 import { Config } from "./Config";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./cli";
-import cluster, { Worker } from "node:cluster";
 import { Policy } from "./Policy";
 import { ResultsMap } from "./match";
 import { GREEN_CHECK, logCheckFailedError, logResults } from "./log";
-import chalk from "chalk";
 import { clientVersion } from "./clientVersion";
 import { commentResults, postMetrics, ResultMap } from "./count";
 import { Message, readyWorker } from "./workerProcess";
@@ -38,8 +39,9 @@ export class Runner {
   }
 
   private run() {
-    if (cluster.isPrimary) {
-      for (let i = 0; i < 7; i++) {
+    const numCpus = cpus().length;
+    if (cluster.isPrimary && numCpus > 1) {
+      for (let i = 0; i < numCpus; i++) {
         this.createWorker();
       }
     } else {
