@@ -1,28 +1,60 @@
 import { spawn } from "child_process"
-import { readline } from "mz";
+import { createInterface } from "node:readline";
+import { fdir } from "fdir";
+import { join } from "path";
+import { GitIgnore } from "./GitIgnore"
 
 export class CurrentWorkingDirectory {
   queue: string[] = [];
   closed = false;
-  listeners: undefined | {
+  listener: undefined | {
     onFile: (path: string) => void;
     onClose: () => void;
   }
 
-  constructor(public cwd: string, gitIgnoreFileName: string = '.gitignore') {
-    const gitLsTree = spawn("git", ["ls-tree", "-r", "head", "--name-only"]);
+  constructor(public cwd: string, gitIgnoreFileName?: string) {
+    if (gitIgnoreFileName) {
+      this.manualDirCrawl(gitIgnoreFileName);
+    } else {
+      const gitLsTree = spawn("git", ["ls-tree", "-r", "head", "--name-only"]);
 
-    const nonGitIgnoredFiles = readline.createInterface({
-      input: gitLsTree.stdout,
-    })
+      gitLsTree.on("error", () => this.manualDirCrawl());
 
-    nonGitIgnoredFiles.on("line", this.onFile.bind(this));
-    nonGitIgnoredFiles.on("close", this.onClose.bind(this));
+      const nonGitIgnoredFiles = createInterface({
+        input: gitLsTree.stdout,
+      });
+
+      nonGitIgnoredFiles.on("line", this.onFile.bind(this));
+      nonGitIgnoredFiles.on("close", this.onClose.bind(this));
+    }
+  }
+
+  async manualDirCrawl(gitIgnoreFileName?: string) {
+    // git is not installed or this isn't a git repo, falling back to fdir
+    const gitignore = new GitIgnore(join(this.cwd, gitIgnoreFileName || ".gitignore"));
+
+    const gettingFiles = new fdir()
+      .withRelativePaths()
+      .withErrors()
+      .filter((_, isDirectory) => !isDirectory)
+      .crawl(this.cwd)
+      .withPromise() as Promise<string[]>
+
+    await gitignore.ready;
+
+    const files = await gettingFiles;
+    files.forEach(file => {
+      if (!gitignore.isIgnored(file) && file !== gitIgnoreFileName) {
+        this.onFile(file);
+      }
+    });
+
+    this.onClose();
   }
 
   onFile(path: string) {
-    if (this.listeners) {
-      this.listeners.onFile(path);
+    if (this.listener) {
+      this.listener.onFile(path);
     } else {
       this.queue.push(path);
     }
@@ -30,8 +62,8 @@ export class CurrentWorkingDirectory {
 
   onClose() {
     this.closed = true;
-    if (this.listeners) {
-      this.listeners.onClose();
+    if (this.listener) {
+      this.listener.onClose();
     }
   }
 
@@ -39,8 +71,9 @@ export class CurrentWorkingDirectory {
     onFile: (path: string) => void,
     onClose: () => void
   ) {
-    if (this.listeners) throw new Error("Already listening");
-    this.listeners = { onFile, onClose };
+    if (this.listener) throw new Error("Already listening");
+    this.listener = { onFile, onClose };
+
     if (this.queue.length) {
       this.queue.forEach(onFile);
       this.queue = [];

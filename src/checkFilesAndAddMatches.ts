@@ -1,7 +1,8 @@
+import { Worker } from "cluster";
 import { readFile } from "fs"
 import { join } from "path";
 import { Policy } from "./Policy";
-import { FileMatcher } from "./FileMatcher";
+import { File } from "./File";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./flags";
 
@@ -10,7 +11,7 @@ import { Flags } from "./flags";
 export const checkFilesAndAddMatches = async (
   currentWorkingDirectory: CurrentWorkingDirectory,
   policies: Policy[],
-  flags: Flags
+  flags: Flags,
 ): Promise<{
   policies: Policy[],
   filesChecked: string[],
@@ -26,15 +27,14 @@ export const checkFilesAndAddMatches = async (
       inProgress++;
       readFile(join(currentWorkingDirectory.cwd, filePath), { encoding: "utf8" }, (err, fileContents) => {
         if (err) return reject(err);
-        const fileMatcher = new FileMatcher(filePath, fileContents, policies);
-        fileMatcher.findMatches();
+        const file = new File(filePath, fileContents);
 
-        // policies.forEach(policy => policy.processFile(file))
+        policies.forEach(policy => policy.processFile(file))
         filesChecked.push(filePath);
         inProgress--;
         if (queued.length) {
           processFile(queued.shift()!);
-        } else if (closed) {
+        } else if (closed && inProgress === 0) {
           resolve({ policies, filesChecked });
         }
       })

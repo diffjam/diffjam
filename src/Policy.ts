@@ -1,6 +1,6 @@
 import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
-import { FileMatcher } from "./FileMatcher";
+import { File } from "./File";
 import { hasProp } from "./hasProp";
 import { Match } from "./match";
 
@@ -8,7 +8,9 @@ const regexPrefix = "regex:";
 const inversePrefix = "-:";
 
 export type Needles = {
-  positive: RegExp;
+  regex: RegExp;
+  otherRegexes: RegExp[];
+  positive: string[];
   negative: string[];
 }
 export interface PolicyJson {
@@ -93,16 +95,16 @@ export class Policy {
     return underPolicy;
   }
 
-  // processFile(file: FileMatcher) {
-  //   if (!this.filesToCheck.has(file.path)) return;
-  //   const matches = file.findMatches(this.needles);
+  processFile(file: File) {
+    if (!this.filesToCheck.has(file.path)) return;
+    const matches = file.findMatches(this.needles);
 
-  //   this.filesToCheck.delete(file.path);
-  //   this.matches.push(...matches);
-  //   if (this.filesToCheck.size === 0) {
-  //     this.ran = true;
-  //   }
-  // }
+    this.filesToCheck.delete(file.path);
+    this.matches.push(...matches);
+    if (this.filesToCheck.size === 0) {
+      this.ran = true;
+    }
+  }
 
   isCountAcceptable(): boolean {
     return this.matches.length <= this.baseline;
@@ -112,25 +114,31 @@ export class Policy {
     return this.matches.length < this.baseline;
   }
 
+  // The array of search strings should include at least one positive term to search for
+  // and may include negative terms to exclude from the search.
   static searchConfigToNeedles(search: string[]): Needles {
     const [inverseTerms, positiveTerms] = partition(search, term => term.startsWith(inversePrefix));
     const [regexTerms, simplePositiveTerms] = partition(positiveTerms, term => term.startsWith(regexPrefix));
 
     if (regexTerms.length) {
       if (inverseTerms.length) {
-        console.error(`regex search terms (${regexTerms[0]}) cannot be combined with negative search terms (${inverseTerms[0]})`);
+        console.error(`regex search terms (${regexTerms[0]}) cannot be combined with inverse search terms (${inverseTerms[0]})`);
         process.exit(1);
       }
+    } else if (!simplePositiveTerms.length) {
+      console.error(`no positive search terms found`);
+      process.exit(1);
     }
 
-    const allTerms = regexTerms
-      .map(term => term.slice(regexPrefix.length))
-      .concat(simplePositiveTerms.map(escapeStringRegexp))
-      .join("|")
+    const [firstRegexTerm, ...otherRegexTerms] = regexTerms.map(term => term.slice(regexPrefix.length))
+
+    const positive = simplePositiveTerms.map(escapeStringRegexp)
 
     return {
-      positive: new RegExp(`(${allTerms})`),
+      regex: new RegExp(firstRegexTerm || positive.shift()!, "gm"),
       negative: inverseTerms.map(term => term.slice(inversePrefix.length)),
+      positive,
+      otherRegexes: otherRegexTerms.map(term => new RegExp(term)),
     }
   }
 

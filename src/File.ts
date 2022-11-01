@@ -20,7 +20,7 @@ export class File {
   findMatches(needles: Needles): Match[] {
     const matchArray: Match[] = [];
     let regexMatch: RegExpExecArray | null;
-    while (regexMatch = needles.positive.exec(this.contents)) {
+    while (regexMatch = needles.regex.exec(this.contents)) {
       const found = regexMatch[0];
       const foundStartIndex = regexMatch.index;
       const foundLength = found.length;
@@ -41,8 +41,13 @@ export class File {
 
       const startWholeLine = beforeInSameLine + foundOnStartLine + afterInSameLine;
 
-      // Ignore matches that include one of the negative needles
       if (needles.negative.some(term => startWholeLine.includes(term))) {
+        continue;
+      }
+      if (!needles.positive.every(term => startWholeLine.includes(term))) {
+        continue;
+      }
+      if (!needles.otherRegexes.every(term => term.test(startWholeLine))) {
         continue;
       }
 
