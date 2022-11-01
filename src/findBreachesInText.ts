@@ -16,13 +16,13 @@ export const findBreachesInText = (
   for (const policy of Object.values(conf.policyMap)) {
     if (gitignore.isIgnored(filePath)) continue;
     if (!policy.isFileUnderPolicy(filePath)) continue;
-    const matches = file.findMatches(policy.needles)
-    const breaches: FileBreach[] = matches.map((match) => ({
-      ...match,
-      message: policy.description,
-      severity: 1
-    }));
-    fileBreaches.push(...breaches);
+    file.findMatches(policy.needles, match => {
+      fileBreaches.push({
+        ...match,
+        message: policy.description,
+        severity: 1
+      });
+    });
   }
   return fileBreaches;
 }

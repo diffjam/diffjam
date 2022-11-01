@@ -19,6 +19,7 @@ import { Config } from "./src/Config";
 import { readFile } from "node:fs";
 import { ResultsMap } from "./src/match";
 import { logResults } from "./src/log";
+import { Runner } from "./src/Runner";
 
 
 // multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
@@ -70,91 +71,16 @@ if (cluster.isPrimary) {
     const dir = process.cwd();
     const configFilePath = flags.config || join(dir, "diffjam.yaml");
 
-    const workers = [
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-      { worker: cluster.fork({ configFilePath }), inProgress: new Set() },
-    ]
-
     if (action === "init") {
       return Config.init(configFilePath);
     }
+
 
     const cwd = new CurrentWorkingDirectory(dir);
     const conf = Config.read(configFilePath);
 
     const config = await conf;
-    const policies = Object.values(config.policyMap);
-    const queued: string[] = [];
-    const filesChecked: string[] = [];
-
-    const resultsMap: ResultsMap = {}
-    for (const policyName in config.policyMap) {
-      resultsMap[policyName] = {
-        policy: config.policyMap[policyName],
-        matches: [],
-      };
-    }
-
-    await new Promise<void>((resolve, reject) => {
-      let closed = false
-
-      for (const worker of workers) {
-        worker.worker.on("message", (msg: any) => {
-          if (msg.type === "match") {
-            resultsMap[msg.policyName].matches.push(msg.match);
-          } else if (msg.type === "processedFile") {
-            if (!worker.inProgress.has(msg.filePath)) {
-              throw new Error('file not in progress: ' + msg.filePath)
-            }
-            worker.inProgress.delete(msg.filePath);
-
-            if (queued.length) {
-              const filePath = queued.shift()!;
-              worker.inProgress.add(filePath)
-              worker.worker.send({ type: "processFile", filePath });
-            } else if (closed && workers.every(w => !w.inProgress.size)) {
-              resolve();
-            }
-          }
-        });
-      }
-
-      cwd.allNonGitIgnoredFiles(filePath => {
-        let fileUnderPolicy = false
-        for (const policy of policies) {
-          if (policy.isFileUnderPolicy(filePath)) {
-            fileUnderPolicy = true
-            filesChecked.push(filePath)
-            break;
-          }
-        }
-        if (fileUnderPolicy) {
-          const worker = workers.find(w => w.inProgress.size < 3);
-          if (!worker) {
-            queued.push(filePath);
-          } else {
-            worker.inProgress.add(filePath)
-            worker.worker.send({ type: "processFile", filePath });
-          }
-        }
-      }, () => {
-        closed = true;
-        if (workers.every(w => !w.inProgress.size)) {
-          resolve();
-        }
-      })
-    });
-
-    for (const worker of workers) {
-      worker.worker.kill();
-    }
-
-    logResults(resultsMap, filesChecked);
+    const runner = new Runner(config, flags, cwd, logResults);
   };
 
   // eslint-disable-next-line no-void
@@ -175,14 +101,13 @@ if (cluster.isPrimary) {
         if (err) throw err;
         const file = new File(filePath, fileContents);
         policies.forEach(policy => {
-          const matches = policy.processFile(file);
-          for (const match of matches) {
+          policy.processFile(file, match => {
             process.send!({
               type: "match",
               policyName: policy.name,
               match,
             })
-          }
+          });
         });
         processingFiles.delete(filePath);
         process.send!({ type: "processedFile", filePath });

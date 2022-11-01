@@ -17,8 +17,7 @@ export class File {
     this.newLineIndexes = newLineIndexes;
   }
 
-  findMatches(needles: Needles): Match[] {
-    const matchArray: Match[] = [];
+  findMatches(needles: Needles, onMatch: (match: Match) => void) {
     let regexMatch: RegExpExecArray | null;
     while (regexMatch = needles.regex.exec(this.contents)) {
       const found = regexMatch[0];
@@ -63,7 +62,7 @@ export class File {
       const startWholeLineFormatted = beforeInSameLine + chalk.bold(foundOnStartLine) + afterInSameLine;
       const breachPath = `${this.path}(${startLineNumber + 1}:${startColumn + 1})`;
 
-      matchArray.push({
+      onMatch({
         startLineNumber,
         endLineNumber,
         startColumn,
@@ -75,6 +74,5 @@ export class File {
         breachPath
       });
     }
-    return matchArray;
   }
 }
