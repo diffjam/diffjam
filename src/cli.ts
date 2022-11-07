@@ -21,7 +21,7 @@ export const cli = meow(
       $ diffjam bump
       $ diffjam count
       $ diffjam modify
-      $ diffjam remove [name]
+      $ diffjam remove
 `,
   {
     flags: {

@@ -280,15 +280,11 @@ export class Runner {
     return promise;
   }
 
-  async removePolicy(policyName: string) {
-    const policy = this.config.getPolicy(policyName);
-
-    if (!policy) {
-      console.error("There was no policy named: ", policyName);
-      return process.exit(1);
-    }
-
-    await this.config.deletePolicy(policyName);
+  async removePolicy() {
+    const ui = require("./ui");
+    const policy = await ui.select("Select a policy to remove: ", this.config.policyMap);
+    await this.config.deletePolicy(policy.name);
+    console.log(`Removed ${policy.name}`);
   }
 
   modifyPolicy() {

@@ -22,7 +22,7 @@ process.on("unhandledRejection", (err: unknown) => {
 if (cluster.isPrimary) {
 
   // run!
-  const run = async function (action: string, policyName: string, flags: Flags) {
+  const run = async function (action: string, flags: Flags) {
     const dir = process.cwd();
     const configFilePath = flags.config || join(dir, "diffjam.yaml");
 
@@ -50,7 +50,7 @@ if (cluster.isPrimary) {
       case "add":
         return (await createRunner({ syncWorkerPool: true })).addPolicy(); // add a policy to the config
       case "remove":
-        return (await createRunner()).removePolicy(policyName); // remove a policy to the config
+        return (await createRunner({ syncWorkerPool: true })).removePolicy(); // remove a policy to the config
       case "modify":
         return (await createRunner({ syncWorkerPool: true })).modifyPolicy(); // add a policy to the config
       case "count":
@@ -67,7 +67,7 @@ if (cluster.isPrimary) {
   };
 
   // eslint-disable-next-line no-void
-  void run(cli.input[0], cli.input[1], cli.flags);
+  void run(cli.input[0], cli.flags);
 } else {
   workerProcess();
 }

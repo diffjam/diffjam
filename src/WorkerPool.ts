@@ -34,6 +34,7 @@ export class WorkerPool {
     const workerEntry = { worker, inProgress };
 
     worker.on("message", (msg: Message) => {
+      // console.log(msg.type, (msg as any).filePath, this.workers);
       if (msg.type === "match") {
         this.resultsMap[msg.policyName].matches.push(msg.match);
       } else if (msg.type === "processedFile") {
@@ -43,40 +44,73 @@ export class WorkerPool {
 
         inProgress.delete(msg.filePath);
 
-        if (this.queued.length) {
-          this.checkFile(workerEntry, this.queued.shift()!);
-        } else if (this.closed && this.workers.every(({ inProgress }) => !inProgress.size)) {
+        let queuedFilePath = this.queued.shift();
+
+        if (queuedFilePath) {
+          this.checkFile(workerEntry, queuedFilePath);
+        } else if (this.isWorkDone()) {
           this.onDone();
         }
       }
-    })
+    });
+
+    worker.on("error", (error) => {
+      this.killAllWorkers();
+      throw error;
+    });
 
     this.workers.push(workerEntry);
   }
 
+  private isWorkDone(): boolean {
+    return (
+      this.closed
+      && !this.queued.length
+      && this.workers.every(({ inProgress }) => !inProgress.size)
+    );
+  }
+
+  private workerWithLeastInProgress(): WorkerEntry {
+    let leastSoFar: WorkerEntry = this.workers[0];
+    for (const worker of this.workers) {
+      // Exit early if we find a worker with no files in progress as this is the minimum
+      if (!worker.inProgress) {
+        return worker;
+      }
+      if (worker.inProgress.size < leastSoFar.inProgress.size) {
+        leastSoFar = worker;
+      }
+    }
+    return leastSoFar;
+  }
+
   private checkFile(worker: WorkerEntry, filePath: string) {
     this.filesChecked.push(filePath);
-    worker.inProgress.add(filePath)
+    worker.inProgress.add(filePath);
     worker.worker.send({ type: "processFile", filePath });
   }
 
   public processFile(filePath: string) {
-    const worker = this.workers.find(({ inProgress }) => inProgress.size < 3);
-    if (!worker) {
+    const worker = this.workerWithLeastInProgress();
+    if (worker.inProgress.size >= 3) {
       this.queued.push(filePath);
     } else {
       this.checkFile(worker, filePath);
     }
   }
 
-  private onDone() {
+  private killAllWorkers() {
     this.workers.forEach(({ worker }) => worker.kill());
+  }
+
+  private onDone() {
+    this.killAllWorkers();
     this.onResults();
   }
 
   public onFilesDone() {
     this.closed = true;
-    if (this.workers.every(({ inProgress }) => !inProgress.size)) {
+    if (this.isWorkDone()) {
       this.onDone();
     }
   }
