@@ -63,8 +63,7 @@ export class WorkerPool {
     });
 
     worker.on("error", (error) => {
-      this.killAllWorkers();
-      throw error;
+      throw new Error("FROM WORKER: " + error.message);
     });
 
     this.workers.push(workerEntry);
@@ -107,8 +106,16 @@ export class WorkerPool {
     }
   }
 
-  private killAllWorkers() {
-    this.workers.forEach(({ worker }) => worker.kill());
+  killAllWorkers() {
+    return new Promise<void>((resolve) => {
+      this.workers.forEach(({ worker }) => worker.kill());
+      this.workers.forEach(({ worker }) => worker.once("exit", () => {
+        if (this.workers.every(({ worker }) => worker.isDead())) {
+          resolve();
+        }
+      }));
+    });
+
   }
 
   private onDone() {

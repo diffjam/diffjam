@@ -44,6 +44,8 @@ export class Runner {
 
   private run(): Promise<{ resultsMap: ResultsMap, filesChecked: string[] }> {
     equal(this.ran, false, "Runner.run() should only be called once");
+    equal(this.policies.length > 0, true, "No policies specified.\nPlease check your config file at " + this.config.filePath);
+
     return new Promise(resolve => {
       this.workerPool.onResults = () => {
         this.ran = true;

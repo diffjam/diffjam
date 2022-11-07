@@ -12,12 +12,21 @@ import { WorkerPool } from "./src/WorkerPool";
 import { SingleThreadWorkerPool } from "./src/SingleThreadWorkerPool";
 
 
-process.on("unhandledRejection", (err: unknown) => {
-  console.error("err: ", err);
-  throw err;
-});
+let workerPool: WorkerPool;
+
+async function logAndQuit(msg: any): Promise<never> {
+  console.error(msg);
+  if (workerPool) {
+    return workerPool.killAllWorkers().then(() => process.exit(1));
+  } else {
+    process.exit(1);
+  }
+}
 
 if (cluster.isPrimary) {
+  process.on("unhandledRejection", (err: unknown) => {
+    logAndQuit(err);
+  });
 
   // run!
   const run = async function (action: string, flags: Flags) {
@@ -30,35 +39,47 @@ if (cluster.isPrimary) {
 
     // Some actions modify the config file, so for those we use a worker pool
     // in the same thread so that when we modify it the new policy is available
-    async function createRunner(opts: { syncWorkerPool?: boolean } = {}) {
-      const workerPool = !opts.syncWorkerPool && new WorkerPool(configFilePath, dir);
+    async function createRunner(opts: { syncWorkerPool?: boolean } = {}): Promise<Runner | undefined> {
+      if (!opts.syncWorkerPool) workerPool = new WorkerPool(configFilePath, dir);
 
       const cwd = new CurrentWorkingDirectory(dir);
       const conf = Config.read(configFilePath);
-
-      const config = await conf;
-      return new Runner(config, flags, cwd, workerPool || new SingleThreadWorkerPool(config, dir));
+      let config: Config
+      try {
+        config = await conf;
+        return new Runner(config, flags, cwd, workerPool || new SingleThreadWorkerPool(config, dir));
+      } catch (err) {
+        if (err instanceof Error) {
+          await logAndQuit(err.message + "\nPlease check your config file at " + configFilePath);
+        } else {
+          await logAndQuit((err as any).message || err);
+        }
+      }
     }
 
-    switch (action) {
-      case "check":
-        return (await createRunner()).check(); // count + fail if warranted
-      case "cinch":
-        return (await createRunner()).cinch(); // if there are no breaches, update the baselines to the strictest possible
-      case "add":
-        return (await createRunner({ syncWorkerPool: true })).addPolicy(); // add a policy to the config
-      case "remove":
-        return (await createRunner({ syncWorkerPool: true })).removePolicy(); // remove a policy to the config
-      case "modify":
-        return (await createRunner({ syncWorkerPool: true })).modifyPolicy(); // add a policy to the config
-      case "count":
-        return (await createRunner()).count(); // run the policy counter
-      case "bump":
-        return (await createRunner()).bump();
-      default:
-        console.error(`unknown command: ${action}`);
-        console.error(cli.help);
-        process.exit(1);
+    try {
+      switch (action) {
+        case "check":
+          return await (await createRunner())!.check(); // count + fail if warranted
+        case "cinch":
+          return await (await createRunner())!.cinch(); // if there are no breaches, update the baselines to the strictest possible
+        case "add":
+          return await (await createRunner({ syncWorkerPool: true }))!.addPolicy(); // add a policy to the config
+        case "remove":
+          return await (await createRunner({ syncWorkerPool: true }))!.removePolicy(); // remove a policy to the config
+        case "modify":
+          return await (await createRunner({ syncWorkerPool: true }))!.modifyPolicy(); // add a policy to the config
+        case "count":
+          return await (await createRunner())!.count(); // run the policy counter
+        case "bump":
+          return await (await createRunner())!.bump();
+        default:
+          console.error(`unknown command: ${action}`);
+          console.error(cli.help);
+          process.exit(1);
+      }
+    } catch (err) {
+      logAndQuit((err as any).message || err);
     }
   };
 

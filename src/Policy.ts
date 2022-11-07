@@ -1,3 +1,4 @@
+import cluster from "cluster";
 import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
 import { FileMatcher } from "./FileMatcher";
@@ -28,15 +29,6 @@ const escapeStringRegexp = (str: string) =>
     .replace(/-/g, "\\x2d");
 
 
-export const findFirstNeedle = (needle: RegExp, haystack: string): string | never => {
-  if (isString(needle) && haystack.indexOf(needle) !== -1) {
-    return needle;
-  }
-  const matches = ((needle as RegExp).exec(haystack)) || [];
-  return matches[0];
-}
-
-
 export class Policy {
   public ran: boolean = false;
   public needles: Needles
@@ -51,7 +43,16 @@ export class Policy {
     ignoreFilePatterns?: string | string[],
     public hiddenFromOutput: boolean = false,
   ) {
-    this.needles = Policy.searchConfigToNeedles(this.search);
+    try {
+      this.needles = Policy.searchConfigToNeedles(this.search);
+    } catch (err) {
+      if (err instanceof Error) {
+        throw new Error(`Error in policy (${name}): ${err.message}`);
+      } else {
+        throw new Error(`Error in policy (${name})`);
+      }
+    }
+
     this.description = description;
     this.filePattern = filePattern;
     this.search = Array.isArray(search) ? search : [search];
@@ -107,12 +108,10 @@ export class Policy {
 
     if (regexTerms.length) {
       if (inverseTerms.length) {
-        console.error(`regex search terms (${regexTerms[0]}) cannot be combined with inverse search terms (${inverseTerms[0]})`);
-        process.exit(1);
+        throw new Error(`regex search terms (${regexTerms[0]}) cannot be combined with inverse search terms (${inverseTerms[0]})`);
       }
     } else if (!simplePositiveTerms.length) {
-      console.error(`no positive search terms found`);
-      process.exit(1);
+      throw new Error(`no positive search terms found`);
     }
 
     const [firstRegexTerm, ...otherRegexTerms] = regexTerms.map(term => term.slice(regexPrefix.length));
@@ -128,38 +127,53 @@ export class Policy {
   }
 
   static fromJson(name: string, obj: any): Policy {
-    if (!obj) {
-      throw new Error("input was empty");
-    }
+    try {
+      if (!obj) {
+        throw new Error("input was empty");
+      }
 
-    if (!hasProp(obj, "baseline") || !isNumber(obj.baseline)) {
-      throw new Error("missing baseline");
-    }
+      if (!hasProp(obj, "baseline")) {
+        throw new Error("baseline is required");
+      }
+      if (!isNumber(obj.baseline)) {
+        throw new Error("baseline must be a number");
+      }
+      if (!hasProp(obj, "search")) {
+        throw new Error("search is required");
+      }
+      if (!(isString(obj.search) || (Array.isArray(obj.search) && obj.search.every(isString)))) {
+        throw new Error("search must be a string or an array of strings");
+      }
 
-    if (!hasProp(obj, "search") || !isString(obj.search)) {
-      if (Array.isArray(obj.search) && !obj.search.every(isString)) {
-        console.error("obj: ", obj);
-        throw new Error("missing search");
+      if (!Array.isArray(obj.search)) {
+        obj.search = [obj.search];
+      }
+
+      if (!hasProp(obj, "filePattern")) {
+        throw new Error("filePattern is required");
+      }
+      if (!isString(obj.filePattern)) {
+        throw new Error("filePattern must be a string");
+      }
+
+      if (!hasProp(obj, "description")) {
+        throw new Error("description is required");
+      }
+      if (!isString(obj.description)) {
+        throw new Error("description must be a string");
+      }
+
+      if (hasProp(obj, "hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
+        throw new Error("hiddenFromOutput must be a boolean");
+      }
+
+      return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
+    } catch (err) {
+      if (err instanceof Error) {
+        throw new Error(`Error in policy (${name}): ${err.message}`);
+      } else {
+        throw new Error(`Error in policy (${name})`);
       }
     }
-
-    if (!Array.isArray(obj.search)) {
-      obj.search = [obj.search];
-    }
-
-    if (!hasProp(obj, "filePattern") || !isString(obj.filePattern)) {
-      throw new Error("missing filePattern");
-    }
-
-    if (!hasProp(obj, "description") || !isString(obj.description)) {
-      throw new Error("missing description");
-    }
-
-    if (hasProp(obj, "hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
-      console.error("obj: ", obj);
-      throw new Error("missing hiddenFromOutput");
-    }
-
-    return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
   }
 }

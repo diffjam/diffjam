@@ -86,3 +86,10 @@ export class FileMatcher {
     }
   }
 }
+
+export function findMatches(fileContents: string, needles: Needles) {
+  const fileMatcher = new FileMatcher("", fileContents);
+  const matches: Match[] = [];
+  fileMatcher.findMatches(needles, (match) => matches.push(match));
+  return matches;
+}

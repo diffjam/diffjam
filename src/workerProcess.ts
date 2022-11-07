@@ -49,6 +49,8 @@ export async function workerProcess() {
   let confReady = false;
   const queued: string[] = [];
 
+  equal(!!process.env.configFilePath, true, "configFilePath not set");
+  equal(!!process.env.cwd, true, "cwd not set");
   const conf = Config.read(process.env.configFilePath!);
   const cwd = process.env.cwd!;
 
@@ -60,7 +62,14 @@ export async function workerProcess() {
     worker.processFile(filePath);
   });
 
-  const config = await conf;
+  // Errors in reading the config should be caught and logged by the parent process.
+  let config: Config;
+  try {
+    config = await conf;
+  } catch (err) {
+    return;
+  }
+
   confReady = true;
 
   const worker = readyWorker(config, cwd, (match: Match, policy: Policy) => {
