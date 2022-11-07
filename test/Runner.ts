@@ -6,7 +6,7 @@ import { Config } from "../src/Config";
 import { SingleThreadWorkerPool } from "../src/SingleThreadWorkerPool";
 
 describe("Runner", () => {
-  it("searches a project, finding the results for the provided policies", done => {
+  it("searches a project, finding the results for the provided policies", async () => {
     const currentWorkingDirectory = new CurrentWorkingDirectory("test/example_project", "mock-gitignore");
 
     const noHamsterPolicy = new Policy(
@@ -52,99 +52,94 @@ describe("Runner", () => {
       workerPool
     );
 
-    (runner as any).workerPool.onResults = () => {
+    const { filesChecked, resultsMap } = await (runner as any).run()
 
-      expect((runner as any).workerPool.filesChecked.sort()).toEqual(["2.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"]);
+    expect(filesChecked.sort()).toEqual(["2.txt", "nested/1.txt", "nested/2.txt", "nested/3.txt", "nested/4.txt"]);
 
-      expect((runner as any).workerPool.resultsMap.noHamsterPolicy.matches).toEqual([
-        {
-          startLineNumber: 0,
-          endLineNumber: 0,
-          startColumn: 0,
-          endColumn: 7,
-          found: 'hamster',
-          path: 'nested/1.txt',
-          startWholeLine: 'hamster',
-          startWholeLineFormatted: '\x1B[1mhamster\x1B[22m',
-          breachPath: "nested/1.txt(1:1)",
-        },
-        {
-          startLineNumber: 3,
-          endLineNumber: 3,
-          startColumn: 0,
-          endColumn: 7,
-          found: 'hamster',
-          path: 'nested/1.txt',
-          startWholeLine: 'hamster purple hamster',
-          startWholeLineFormatted: '\x1B[1mhamster\x1B[22m purple hamster',
-          breachPath: "nested/1.txt(4:1)",
-        },
-        {
-          startLineNumber: 3,
-          endLineNumber: 3,
-          startColumn: 15,
-          endColumn: 22,
-          found: 'hamster',
-          path: 'nested/1.txt',
-          startWholeLine: 'hamster purple hamster',
-          startWholeLineFormatted: 'hamster purple \x1B[1mhamster\x1B[22m',
-          breachPath: "nested/1.txt(4:16)",
-        },
-        {
-          startLineNumber: 0,
-          endLineNumber: 0,
-          startColumn: 0,
-          endColumn: 7,
-          found: 'hamster',
-          path: 'nested/4.txt',
-          startWholeLine: 'hamster',
-          startWholeLineFormatted: '\x1B[1mhamster\x1B[22m',
-          breachPath: "nested/4.txt(1:1)",
-        },
-      ]);
+    expect(resultsMap.noHamsterPolicy.matches).toEqual([
+      {
+        startLineNumber: 0,
+        endLineNumber: 0,
+        startColumn: 0,
+        endColumn: 7,
+        found: 'hamster',
+        path: 'nested/1.txt',
+        startWholeLine: 'hamster',
+        startWholeLineFormatted: '\x1B[1mhamster\x1B[22m',
+        breachPath: "nested/1.txt(1:1)",
+      },
+      {
+        startLineNumber: 3,
+        endLineNumber: 3,
+        startColumn: 0,
+        endColumn: 7,
+        found: 'hamster',
+        path: 'nested/1.txt',
+        startWholeLine: 'hamster purple hamster',
+        startWholeLineFormatted: '\x1B[1mhamster\x1B[22m purple hamster',
+        breachPath: "nested/1.txt(4:1)",
+      },
+      {
+        startLineNumber: 3,
+        endLineNumber: 3,
+        startColumn: 15,
+        endColumn: 22,
+        found: 'hamster',
+        path: 'nested/1.txt',
+        startWholeLine: 'hamster purple hamster',
+        startWholeLineFormatted: 'hamster purple \x1B[1mhamster\x1B[22m',
+        breachPath: "nested/1.txt(4:16)",
+      },
+      {
+        startLineNumber: 0,
+        endLineNumber: 0,
+        startColumn: 0,
+        endColumn: 7,
+        found: 'hamster',
+        path: 'nested/4.txt',
+        startWholeLine: 'hamster',
+        startWholeLineFormatted: '\x1B[1mhamster\x1B[22m',
+        breachPath: "nested/4.txt(1:1)",
+      },
+    ]);
 
-      expect((runner as any).workerPool.resultsMap.noConsoleLogPolicy.matches).toEqual([
-        {
-          startLineNumber: 0,
-          endLineNumber: 2,
-          startColumn: 0,
-          endColumn: 1,
-          found: 'console.log(\n  "@something"\n)',
-          path: 'nested/3.txt',
-          startWholeLine: 'console.log(',
-          startWholeLineFormatted: '\x1B[1mconsole.log(\x1B[22m',
-          breachPath: "nested/3.txt(1:1)",
-        }
-      ]);
+    expect(resultsMap.noConsoleLogPolicy.matches).toEqual([
+      {
+        startLineNumber: 0,
+        endLineNumber: 2,
+        startColumn: 0,
+        endColumn: 1,
+        found: 'console.log(\n  "@something"\n)',
+        path: 'nested/3.txt',
+        startWholeLine: 'console.log(',
+        startWholeLineFormatted: '\x1B[1mconsole.log(\x1B[22m',
+        breachPath: "nested/3.txt(1:1)",
+      }
+    ]);
 
-      expect((runner as any).workerPool.resultsMap.fireAndForgetMustBeAwaitedPolicy.matches).toEqual([
-        {
-          startLineNumber: 1,
-          endLineNumber: 1,
-          startColumn: 0,
-          endColumn: 14,
-          found: 'fireAndForget(',
-          path: 'nested/2.txt',
-          startWholeLine: 'fireAndForget()',
-          startWholeLineFormatted: '\x1B[1mfireAndForget(\x1B[22m)',
-          breachPath: "nested/2.txt(2:1)",
-        },
-        {
-          startLineNumber: 2,
-          endLineNumber: 2,
-          startColumn: 4,
-          endColumn: 18,
-          found: 'fireAndForget(',
-          path: 'nested/2.txt',
-          startWholeLine: 'xyz fireAndForget()',
-          startWholeLineFormatted: 'xyz \x1B[1mfireAndForget(\x1B[22m)',
-          breachPath: "nested/2.txt(3:5)",
-        }
-      ]);
-
-      done();
-    }
-
-    (runner as any).run();
+    expect(resultsMap.fireAndForgetMustBeAwaitedPolicy.matches).toEqual([
+      {
+        startLineNumber: 1,
+        endLineNumber: 1,
+        startColumn: 0,
+        endColumn: 14,
+        found: 'fireAndForget(',
+        path: 'nested/2.txt',
+        startWholeLine: 'fireAndForget()',
+        startWholeLineFormatted: '\x1B[1mfireAndForget(\x1B[22m)',
+        breachPath: "nested/2.txt(2:1)",
+      },
+      {
+        startLineNumber: 2,
+        endLineNumber: 2,
+        startColumn: 4,
+        endColumn: 18,
+        found: 'fireAndForget(',
+        path: 'nested/2.txt',
+        startWholeLine: 'xyz fireAndForget()',
+        startWholeLineFormatted: 'xyz \x1B[1mfireAndForget(\x1B[22m)',
+        breachPath: "nested/2.txt(3:5)",
+      }
+    ]);
   });
 });

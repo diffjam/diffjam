@@ -1,9 +1,10 @@
 import { readyWorker } from "./workerProcess";
 import { ResultsMap } from './match';
 import { Config } from './Config';
+import { equal } from "node:assert";
 
-// Looks like a worker pool, but operates in the same thread
-// used for testing purposes
+// Has the same interface as `WorkerPool`, but operates in the same thread
+// This is useful for testing purposes and for actions that modify the config.
 export class SingleThreadWorkerPool {
   private closed: boolean = false;
 
@@ -24,13 +25,17 @@ export class SingleThreadWorkerPool {
       this.inProgress.delete(filePath);
       if (this.queued.length) {
         this.checkFile(this.queued.shift()!);
-      } else if (this.closed && !this.inProgress.size) {
+      } else if (this.isWorkDone()) {
         this.onResults();
       }
     });
   }
 
-  checkFile(filePath: string) {
+  private isWorkDone(): boolean {
+    return this.closed && !this.inProgress.size && !this.queued.length;
+  }
+
+  private checkFile(filePath: string) {
     this.filesChecked.push(filePath);
     this.inProgress.add(filePath);
     this.worker.processFile(filePath);
@@ -45,8 +50,9 @@ export class SingleThreadWorkerPool {
   }
 
   onFilesDone(): void {
+    equal(this.closed, false, "onFilesDone called twice");
     this.closed = true;
-    if (!this.inProgress.size) {
+    if (this.isWorkDone()) {
       this.onResults();
     }
   }

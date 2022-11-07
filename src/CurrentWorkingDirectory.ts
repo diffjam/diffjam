@@ -1,16 +1,20 @@
+/* 
+  Calls back a single listener with all non-gitignored files in the current working directory.
+  Uses git ls-tree by default, falling back to fdir if git is not available or this isn't a git repo.
+  We maintain a queue for if files are available before the listener is ready.
+*/
+import { equal } from "node:assert";
 import { spawn } from "child_process"
 import { createInterface } from "node:readline";
 import { fdir } from "fdir";
 import { join } from "path";
 import { GitIgnore } from "./GitIgnore"
 
-// Supports adding a single listener who will be called on each file found and when the search is complete.
-// Uses git ls-tree by default, falling back to fdir if git is not available or this isn't a git repo.
-// We maintain a queue for if files are available before the listener is ready.
+
 export class CurrentWorkingDirectory {
-  queue: string[] = [];
-  closed = false;
-  listener: undefined | {
+  private queue: string[] = [];
+  private closed = false;
+  private listener: undefined | {
     onFile: (path: string) => void;
     onClose: () => void;
   }
@@ -32,7 +36,7 @@ export class CurrentWorkingDirectory {
     }
   }
 
-  async manualDirCrawl(gitIgnoreFileName?: string) {
+  private async manualDirCrawl(gitIgnoreFileName?: string) {
     // git is not installed or this isn't a git repo, falling back to fdir
     const gitignore = new GitIgnore(join(this.cwd, gitIgnoreFileName || ".gitignore"));
 
@@ -55,7 +59,7 @@ export class CurrentWorkingDirectory {
     this.onClose();
   }
 
-  onFile(path: string) {
+  private onFile(path: string) {
     if (this.listener) {
       this.listener.onFile(path);
     } else {
@@ -63,7 +67,8 @@ export class CurrentWorkingDirectory {
     }
   }
 
-  onClose() {
+  private onClose() {
+    equal(this.closed, false, "CurrentWorkingDirectory.onClose() should only be called once");
     this.closed = true;
     if (this.listener) {
       this.listener.onClose();

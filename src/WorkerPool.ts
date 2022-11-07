@@ -1,5 +1,13 @@
+/*
+  Manages a pool of workers, and distributes the file paths to process to each.
+  The workers, defined by src/workerProcess.ts, each run in a separate process.
+  Each communicates back to the master process with matches of the policies.
+  The Runner, defined by src/Runner.ts, assigns a `resultsMap` with keys for each 
+  policy and an `onResults` callback that the WorkerPool calls when all work is done.
+*/
 import { cpus } from 'node:os';
 import cluster, { Worker } from "node:cluster";
+import { equal } from 'node:assert';
 import { Message } from "./workerProcess";
 import { ResultsMap } from './match';
 
@@ -109,6 +117,7 @@ export class WorkerPool {
   }
 
   public onFilesDone() {
+    equal(this.closed, false, "onFilesDone called twice");
     this.closed = true;
     if (this.isWorkDone()) {
       this.onDone();

@@ -2,8 +2,8 @@ import chalk from "chalk";
 import { maxBy, partition } from "lodash";
 import { Result, ResultsMap } from "./match";
 
-const RED_X = chalk.red("❌️");
-export const GREEN_CHECK = chalk.green("✅");
+export const RED_X = "❌️";
+export const GREEN_CHECK = "✅";
 
 export const logCheckFailedError = () => {
   console.error(`\n${RED_X} ${chalk.red.bold("Check failed.")}`);
@@ -46,13 +46,11 @@ const logBreachError = (breach: Result) => {
   }
 };
 
-export const logResults = (resultsMap: ResultsMap, filesChecked: string[]) => {
+export const logResults = (resultsMap: ResultsMap, _filesChecked: string[]) => {
   const all = Object.values(resultsMap);
   const [successes, breaches] = partition(all, ({ policy, matches }) => policy.isCountAcceptable(matches));
 
-  breaches.forEach((b) => {
-    logBreachError(b);
-  });
+  breaches.forEach(logBreachError);
 
   successes.forEach((s) => {
     if (!s.policy.hiddenFromOutput) {
@@ -60,9 +58,5 @@ export const logResults = (resultsMap: ResultsMap, filesChecked: string[]) => {
     }
   });
 
-  return {
-    breaches,
-    successes,
-    all,
-  }
+  return { breaches, successes, all }
 };

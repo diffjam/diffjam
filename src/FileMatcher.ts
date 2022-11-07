@@ -1,3 +1,15 @@
+/*
+  Finds matches for a given set of `needles` to search for, calling `onMatch`
+  for each match found.
+
+  The `needles` has a primary regex with the global and multiline flags, so
+  we cycle through each of its matches using `.exec`. Any other regexes in 
+  the `needles` are used to further filter whether the first line matched in 
+  meets other terms.
+
+  If this is indeed a match, we compute the line number and column number as 
+  well as format the match for display.
+*/
 import chalk from "chalk";
 import { findLastIndex, last } from "lodash";
 import { Match } from "./match";
@@ -6,15 +18,13 @@ import { Needles } from "./Policy";
 const newLineRegExp = new RegExp("\n", "gm");
 
 export class FileMatcher {
-  private newLineIndexes: number[];
+  private newLineIndexes: number[] = [];
 
   constructor(public path: string, public contents: string) {
-    const newLineIndexes: number[] = [];
     let newLineRegExpMatch: RegExpExecArray | null;
     while ((newLineRegExpMatch = newLineRegExp.exec(contents))) {
-      newLineIndexes.push(newLineRegExpMatch.index);
+      this.newLineIndexes.push(newLineRegExpMatch.index);
     }
-    this.newLineIndexes = newLineIndexes;
   }
 
   findMatches(needles: Needles, onMatch: (match: Match) => void) {
@@ -68,10 +78,10 @@ export class FileMatcher {
         startColumn,
         endColumn,
         found,
-        path: this.path,
         startWholeLine,
         startWholeLineFormatted,
-        breachPath
+        breachPath,
+        path: this.path,
       });
     }
   }

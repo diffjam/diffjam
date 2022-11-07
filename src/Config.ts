@@ -1,3 +1,7 @@
+/*
+  Read/parse/write a config diffjam.yaml file with policies.
+*/
+
 import { dump, load } from "js-yaml";
 import { hasProp } from "./hasProp";
 import { Policy, PolicyJson } from "./Policy";

@@ -1,3 +1,4 @@
+import { equal } from "node:assert";
 import { join } from "node:path";
 import cluster from "node:cluster";
 import { Config } from "./Config";
@@ -5,6 +6,7 @@ import { Match } from "./match";
 import { Policy } from "./Policy";
 import { readFile } from "fs";
 import { FileMatcher } from "./FileMatcher";
+
 
 export type Message =
   | { type: "match", policyName: string, match: Match }
@@ -42,7 +44,7 @@ export function readyWorker(
 }
 
 export async function workerProcess() {
-  if (cluster.isPrimary) throw new Error("not worker");
+  equal(cluster.isPrimary, false, "workerProcess() should only be called in a worker process");
 
   let confReady = false;
   const queued: string[] = [];
@@ -61,13 +63,13 @@ export async function workerProcess() {
   const config = await conf;
   confReady = true;
 
-  const worker = readyWorker(config, cwd, (match, policy) => {
+  const worker = readyWorker(config, cwd, (match: Match, policy: Policy) => {
     process.send!({ type: "match", policyName: policy.name, match });
-  }, (filePath) => {
+  }, (filePath: string) => {
     process.send!({ type: "processedFile", filePath });
   });
 
-  let filePath
+  let filePath: string | undefined;
   while (filePath = queued.shift()) {
     worker.processFile(filePath);
   }

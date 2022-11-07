@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Entrypoint for CLI
 import { join } from "node:path";
 import cluster from "node:cluster"
 import { CurrentWorkingDirectory } from "./src/CurrentWorkingDirectory";
@@ -10,9 +11,6 @@ import { workerProcess } from "./src/workerProcess";
 import { WorkerPool } from "./src/WorkerPool";
 import { SingleThreadWorkerPool } from "./src/SingleThreadWorkerPool";
 
-
-// multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
-// asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
 
 process.on("unhandledRejection", (err: unknown) => {
   console.error("err: ", err);
@@ -57,8 +55,6 @@ if (cluster.isPrimary) {
         return (await createRunner()).count(); // run the policy counter
       case "bump":
         return (await createRunner()).bump();
-      // case "menu":
-      //   return actionMainMenu(runner); // show the main menu
       default:
         console.error(`unknown command: ${action}`);
         console.error(cli.help);

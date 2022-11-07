@@ -1,8 +1,8 @@
 
-import { Runner } from "../Runner";
+import { Runner } from "./Runner";
 
 const actionPolicyDescriptionEdit = async function (name: string, runner: Runner) {
-  const ui = require("../ui");
+  const ui = require("./ui");
 
   const policy = runner.config.getPolicy(name);
 
@@ -57,10 +57,11 @@ const actionPolicyBaselineFix = async function (name: string, runner: Runner) {
   console.log(
     `The baseline for that policy was changed from ${oldBaseline} to ${result.matches.length}`
   );
+  await runner.config.write();
 };
 
 const actionPolicyDelete = async function (name: string, runner: Runner) {
-  const ui = require("../ui");
+  const ui = require("./ui");
   const policy = runner.config.getPolicy(name);
 
   if (!policy) {
@@ -82,7 +83,7 @@ const actionPolicyDelete = async function (name: string, runner: Runner) {
 };
 
 const actionHideFromOutput = async function (name: string, runner: Runner) {
-  const ui = require("../ui");
+  const ui = require("./ui");
 
   const policy = runner.config.getPolicy(name);
   if (!policy) {
@@ -105,7 +106,7 @@ const actionHideFromOutput = async function (name: string, runner: Runner) {
 };
 
 export const actionPolicyModify = async (runner: Runner) => {
-  const ui = require("../ui");
+  const ui = require("./ui");
 
   const policy = await ui.select("Choose a policy to modify", runner.config.policyMap);
 

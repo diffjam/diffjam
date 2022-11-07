@@ -1,3 +1,7 @@
+/*
+  Manually parse .gitignore files into glob patterns in case git ls-tree fails 
+  or we are running the vscode extension.
+*/
 import mm from 'micromatch';
 import fs from "fs";
 import { partition } from 'lodash';
@@ -12,7 +16,7 @@ export class GitIgnore {
   constructor(public gitIgnoreFileName: string = '.gitignore') {
     this.ready = new Promise<void>((resolve) => {
       fs.readFile(gitIgnoreFileName, { encoding: "utf8" }, (err, fileContents) => {
-        if (err) return resolve(undefined);
+        if (err) return resolve(undefined); // This is not an error, just means there is no .gitignore file
         const patterns = gitIgnoreToGlob(fileContents)
 
         const [positive, include] = partition(patterns, pattern => pattern.startsWith("!"));

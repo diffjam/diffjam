@@ -2,7 +2,7 @@ import { isBoolean, isNumber, isString, partition } from "lodash";
 import mm from 'micromatch';
 import { FileMatcher } from "./FileMatcher";
 import { hasProp } from "./hasProp";
-import { Match, ResultsMap } from "./match";
+import { Match } from "./match";
 
 const regexPrefix = "regex:";
 const inversePrefix = "-:";
@@ -98,8 +98,9 @@ export class Policy {
     return matches.length < this.baseline;
   }
 
-  // The array of search strings should include at least one positive term to search for
-  // and may include negative terms to exclude from the search.
+  // Converts array of `search` strings to a `Needles` object. This will include a regex to search for
+  // but also includes other search terms that may be used that will determine if we either include or exclude
+  // a match.
   static searchConfigToNeedles(search: string[]): Needles {
     const [inverseTerms, positiveTerms] = partition(search, term => term.startsWith(inversePrefix));
     const [regexTerms, simplePositiveTerms] = partition(positiveTerms, term => term.startsWith(regexPrefix));
@@ -114,16 +115,16 @@ export class Policy {
       process.exit(1);
     }
 
-    const [firstRegexTerm, ...otherRegexTerms] = regexTerms.map(term => term.slice(regexPrefix.length))
+    const [firstRegexTerm, ...otherRegexTerms] = regexTerms.map(term => term.slice(regexPrefix.length));
 
-    const positive = simplePositiveTerms.map(escapeStringRegexp)
+    const positive = simplePositiveTerms.map(escapeStringRegexp);
 
     return {
       regex: new RegExp(firstRegexTerm || positive.shift()!, "gm"),
       negative: inverseTerms.map(term => term.slice(inversePrefix.length)),
       positive,
       otherRegexes: otherRegexTerms.map(term => new RegExp(term)),
-    }
+    };
   }
 
   static fromJson(name: string, obj: any): Policy {

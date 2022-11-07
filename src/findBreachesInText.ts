@@ -1,10 +1,10 @@
+// used by vs-code plugin
 import { Config } from "./Config";
 import { GitIgnore } from "./GitIgnore";
 import { FileMatcher } from "./FileMatcher";
 import { FileBreach } from "./match";
 
 
-// used by vs-code plugin
 export const findBreachesInText = (
   filePath: string,
   text: string,
