@@ -1,16 +1,18 @@
 import chalk from "chalk";
-import { logCheckFailedError, logResults } from "../log";
 import axios from "axios";
 import envCi from 'env-ci';
 import gitRemoteOriginUrl from "git-remote-origin-url";
 import hostedGitInfo from "hosted-git-info";
-import * as configFile from "../configFile";
-import {gitUrlToSlug} from "../git";
-import { ConfigJson } from "../Config";
-import { ResultMap } from "../getResults";
-import { hasProp } from "../hasProp";
+import { gitUrlToSlug } from "./git";
+import { ConfigJson } from "./Config";
+import { hasProp } from "./hasProp";
+import { clientVersion } from "./clientVersion";
 
-async function postMetrics(apiKey: string, config: ConfigJson, results: ResultMap, clientVersion: string, tags?: any) {
+
+export type ResultMap = { [key: string]: { measurement: number } };
+
+export async function postMetrics(apiKey: string, config: ConfigJson, results: ResultMap, tags?: any) {
+
   let response;
   const body = {
     apiKey,
@@ -55,7 +57,7 @@ async function postMetrics(apiKey: string, config: ConfigJson, results: ResultMa
 //   [2020-05-03T16:57:29.737Z]   slug: 'classdojo/api' }
 
 
-async function commentResults(apiKey: string, config: ConfigJson, results: ResultMap, clientVers: string, tags?: any) {
+export async function commentResults(apiKey: string, config: ConfigJson, results: ResultMap, clientVers: string, tags?: any) {
   const env: any = envCi();
   const { name, service, commit, isPr, pr } = env;
   let { branch, slug, prBranch } = env;
@@ -126,60 +128,3 @@ async function commentResults(apiKey: string, config: ConfigJson, results: Resul
     }
   }
 }
-
-export interface Flags {
-  record?: boolean;
-  ci?: boolean;
-  verbose?: boolean;
-  config?: string;
-}
-
-export const actionCount = async function (flags: Flags = {}, clientVersion: string) {
-  const start = new Date();
-  const { breaches, successes, results } = await logResults();
-  const verbose = Boolean(flags.verbose);
-  const conf = await configFile.getConfig();
-
-  if (breaches.length) {
-    logCheckFailedError();
-  }
-
-  // console.log("flags: ", flags);
-  if (!flags.record && !flags.ci) {
-
-    console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
-    return;
-  }
-
-  console.log(chalk.yellow("sending metrics to server..."));
-  verbose &&
-    console.log(chalk.cyan(`successes: ${JSON.stringify(successes)}`));
-  verbose && console.log(chalk.cyan(`breaches: ${JSON.stringify(breaches)}`));
-  const apiKey = process.env.DIFFJAM_API_KEY;
-  if (!apiKey) {
-    console.error(chalk.red("Missing api key!  Could not post metrics."));
-    console.error(
-      chalk.red(
-        "You must have an api key in an environment variable named DIFFJAM_API_KEY"
-      )
-    );
-    process.exitCode = 1;
-    return;
-  }
-  const configJson = conf.toJson();
-  verbose && console.log("apiKey, config, results: ", apiKey, configJson, results);
-
-
-  if (flags.record) {
-    await postMetrics(apiKey, configJson, results, clientVersion);
-  }
-
-  if (flags.ci) {
-    if (!envCi().isCi) {
-      throw new Error(`could not detect CI environment`);
-    }
-    await commentResults(apiKey, configJson, results, clientVersion);
-  }
-
-  console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
-};

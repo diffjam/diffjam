@@ -1,52 +1,41 @@
-import { isBoolean, isNumber, isString } from "lodash";
-import { findInString } from "./findInString";
-
-// eslint-disable-next-line arrow-body-style
-const escapeStringRegexp = (str: string) => {
-  return str
-    .replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
-    .replace(/-/g, "\\x2d");
-};
-
+import cluster from "cluster";
+import { isBoolean, isNumber, isString, partition } from "lodash";
+import mm from 'micromatch';
+import { FileMatcher } from "./FileMatcher";
 import { hasProp } from "./hasProp";
-import { findMatches } from "./match";
-import { ReverseRegExp } from "./ReverseRegExp";
+import { Match } from "./match";
 
-export type StringOrRegexp = string | RegExp;
-export type Needle = RegExp | ReverseRegExp | string;
 const regexPrefix = "regex:";
 const inversePrefix = "-:";
 
+export type Needles = {
+  regex: RegExp;
+  otherRegexes: RegExp[];
+  positive: string[];
+  negative: string[];
+}
 export interface PolicyJson {
   description: string;
   filePattern: string;
   ignoreFilePatterns?: string[];
-  search: string[];
+  search: string | string[];
   baseline: number;
   hiddenFromOutput?: boolean;
 }
 
-export const testNeedle = (needle: Needle, haystack: string): boolean => {
-  if (isString(needle)) {
-    return haystack.includes(needle);
-  }
-  return needle.test(haystack);
-}
-
-export const findFirstNeedle = (needle: Needle, haystack: string): string | never => {
-  if (isString(needle) && haystack.indexOf(needle) !== -1) {
-    return needle;
-  }
-  const matches = ((needle as RegExp).exec(haystack)) || [];
-  return matches[0];
-}
+const escapeStringRegexp = (str: string) =>
+  str
+    .replace(/[|\\{}()[\]^$+*?.]/g, "\\$&")
+    .replace(/-/g, "\\x2d");
 
 
 export class Policy {
-  public needles: Needle[] = [];
+  public ran: boolean = false;
+  public needles: Needles
   public ignoreFilePatterns: undefined | string[];
 
   constructor(
+    public name: string,
     public description: string,
     public filePattern: string,
     public search: string[],
@@ -54,10 +43,19 @@ export class Policy {
     ignoreFilePatterns?: string | string[],
     public hiddenFromOutput: boolean = false,
   ) {
-    this.needles = Policy.searchConfigToNeedles(this.search);
+    try {
+      this.needles = Policy.searchConfigToNeedles(this.search);
+    } catch (err) {
+      if (err instanceof Error) {
+        throw new Error(`Error in policy (${name}): ${err.message}`);
+      } else {
+        throw new Error(`Error in policy (${name})`);
+      }
+    }
+
     this.description = description;
     this.filePattern = filePattern;
-    this.search = search;
+    this.search = Array.isArray(search) ? search : [search];
     this.baseline = baseline;
     this.hiddenFromOutput = hiddenFromOutput;
     if (ignoreFilePatterns && ignoreFilePatterns.length) {
@@ -73,82 +71,109 @@ export class Policy {
     const json: PolicyJson = {
       description: this.description,
       filePattern: this.filePattern,
-      search: this.search,
+      search: this.search.length === 1 ? this.search[0] : this.search,
       baseline: this.baseline,
-      hiddenFromOutput: this.hiddenFromOutput,
     };
+    if (this.hiddenFromOutput) json.hiddenFromOutput = this.hiddenFromOutput;
     if (this.ignoreFilePatterns) json.ignoreFilePatterns = this.ignoreFilePatterns;
     return json
   }
 
-  isCountAcceptable(count: number) {
-    return count <= this.baseline;
+  isFileUnderPolicy(filePath: string): boolean {
+    return mm.any(filePath, this.filePattern) && (
+      !this.ignoreFilePatterns ||
+      !mm.any(filePath, this.ignoreFilePatterns)
+    );
   }
 
-  isCountCinchable(count: number) {
-    return count < this.baseline;
+  processFile(file: FileMatcher, onMatch: (match: Match, policy: this) => void): void {
+    if (!this.isFileUnderPolicy(file.path)) return;
+    return file.findMatches(this.needles, match => onMatch(match, this));
   }
 
-  evaluateFileContents(path: string, contents: string) {
-    return findInString(path, this.needles, contents);
+  isCountAcceptable(matches: Match[]): boolean {
+    return matches.length <= this.baseline;
   }
 
-  findMatches() {
-    return findMatches(this.filePattern, this.ignoreFilePatterns || [], this.needles);
+  isCountCinchable(matches: Match[]): boolean {
+    return matches.length < this.baseline;
   }
 
-  static searchConfigToNeedles(search: string[]): Needle[] {
-    // optimization? inverse strings don't need to be regexes
-    const needles = search.map((i: string) => {
-      if (!i.startsWith(regexPrefix) && !i.startsWith(inversePrefix)) {
-        // return i;
-        return new RegExp(escapeStringRegexp(i));
+  // Converts array of `search` strings to a `Needles` object. This will include a regex to search for
+  // but also includes other search terms that may be used that will determine if we either include or exclude
+  // a match.
+  static searchConfigToNeedles(search: string[]): Needles {
+    const [inverseTerms, positiveTerms] = partition(search, term => term.startsWith(inversePrefix));
+    const [regexTerms, simplePositiveTerms] = partition(positiveTerms, term => term.startsWith(regexPrefix));
+
+    if (regexTerms.length) {
+      if (inverseTerms.length) {
+        throw new Error(`regex search terms (${regexTerms[0]}) cannot be combined with inverse search terms (${inverseTerms[0]})`);
       }
-      if (i.startsWith(inversePrefix)) {
-        const startIndex = inversePrefix.length;
-        const inverseString = i.slice(startIndex);
-        return new ReverseRegExp(escapeStringRegexp(inverseString));
-      }
-      const startIndex = regexPrefix.length;
-      const regexString = i.slice(startIndex);
-      return new RegExp(regexString);
-    });
-    return needles;
+    } else if (!simplePositiveTerms.length) {
+      throw new Error(`no positive search terms found`);
+    }
 
+    const [firstRegexTerm, ...otherRegexTerms] = regexTerms.map(term => term.slice(regexPrefix.length));
+
+    const positive = simplePositiveTerms.map(escapeStringRegexp);
+
+    return {
+      regex: new RegExp(firstRegexTerm || positive.shift()!, "gm"),
+      negative: inverseTerms.map(term => term.slice(inversePrefix.length)),
+      positive,
+      otherRegexes: otherRegexTerms.map(term => new RegExp(term)),
+    };
   }
 
-  static fromJson(obj: any): Policy {
-    if (!obj) {
-      throw new Error("input was empty");
-    }
+  static fromJson(name: string, obj: any): Policy {
+    try {
+      if (!obj) {
+        throw new Error("input was empty");
+      }
 
-    if (!hasProp(obj, "baseline") || !isNumber(obj.baseline)) {
-      throw new Error("missing baseline");
-    }
+      if (!hasProp(obj, "baseline")) {
+        throw new Error("baseline is required");
+      }
+      if (!isNumber(obj.baseline)) {
+        throw new Error("baseline must be a number");
+      }
+      if (!hasProp(obj, "search")) {
+        throw new Error("search is required");
+      }
+      if (!(isString(obj.search) || (Array.isArray(obj.search) && obj.search.every(isString)))) {
+        throw new Error("search must be a string or an array of strings");
+      }
 
-    if (!hasProp(obj, "search") || !isString(obj.search)) {
-      if (Array.isArray(obj.search) && !obj.search.every(isString)) {
-        console.error("obj: ", obj);
-        throw new Error("missing search");
+      if (!Array.isArray(obj.search)) {
+        obj.search = [obj.search];
+      }
+
+      if (!hasProp(obj, "filePattern")) {
+        throw new Error("filePattern is required");
+      }
+      if (!isString(obj.filePattern)) {
+        throw new Error("filePattern must be a string");
+      }
+
+      if (!hasProp(obj, "description")) {
+        throw new Error("description is required");
+      }
+      if (!isString(obj.description)) {
+        throw new Error("description must be a string");
+      }
+
+      if (hasProp(obj, "hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
+        throw new Error("hiddenFromOutput must be a boolean");
+      }
+
+      return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
+    } catch (err) {
+      if (err instanceof Error) {
+        throw new Error(`Error in policy (${name}): ${err.message}`);
+      } else {
+        throw new Error(`Error in policy (${name})`);
       }
     }
-
-    if (!Array.isArray(obj.search)) {
-      obj.search = [obj.search];
-    }
-
-    if (!hasProp(obj, "filePattern") || !isString(obj.filePattern)) {
-      throw new Error("missing filePattern");
-    }
-
-    if (!hasProp(obj, "description") || !isString(obj.description)) {
-      throw new Error("missing description");
-    }
-
-    if (hasProp(obj, "hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
-      console.error("obj: ", obj);
-      throw new Error("missing hiddenFromOutput");
-    }
-    return new Policy(obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
   }
 }

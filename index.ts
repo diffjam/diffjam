@@ -1,79 +1,90 @@
 #!/usr/bin/env node
 
-// @ts-ignore
-import meow from "meow";
-import * as configFile from "./src/configFile";
-import { clientVersion } from "./src/clientVersion";
-import { actionCheck } from "./src/actions/check";
-import { actionCinch } from "./src/actions/cinch";
-import { actionCount } from "./src/actions/count";
-import { actionInit } from "./src/actions/init";
-import { actionNewPolicy } from "./src/actions/newPolicy";
-import { actionRemovePolicy } from "./src/actions/remove";
-import { actionPolicyModify } from "./src/actions/policyModify";
-import { actionMainMenu } from "./src/actions/mainMenu";
-
-const clientVers = clientVersion();
-
-// multispinner for showing multiple efforts at once: https://github.com/codekirei/node-multispinner
-// asciichart for ascii line charts: https://www.npmjs.com/package/asciichart
-
-process.on("unhandledRejection", (err: unknown) => {
-  console.error("err: ", err);
-  throw err;
-});
+// Entrypoint for CLI
+import { join } from "node:path";
+import cluster from "node:cluster"
+import { CurrentWorkingDirectory } from "./src/CurrentWorkingDirectory";
+import { cli, Flags } from "./src/cli";
+import { Config } from "./src/Config";
+import { Runner } from "./src/Runner";
+import { workerProcess } from "./src/workerProcess";
+import { WorkerPool } from "./src/WorkerPool";
+import { SingleThreadWorkerPool } from "./src/SingleThreadWorkerPool";
 
 
+let workerPool: WorkerPool;
 
-// run!
-const run = async function (action: string, policyName: string, flags: { config?: string; }) {
-  if (!action || action === "menu") {
-    return actionMainMenu(clientVers, flags);
+async function logAndQuit(msg: any): Promise<never> {
+  console.error(msg);
+  if (workerPool) {
+    return workerPool.killAllWorkers().then(() => process.exit(1));
+  } else {
+    process.exit(1);
   }
-  if (action === "init") {
-    return actionInit(flags.config);
-  }
+}
 
-  await configFile.getConfig(flags.config);
+if (cluster.isPrimary) {
+  process.on("unhandledRejection", (err: unknown) => {
+    logAndQuit(err);
+  });
 
-  switch (action) {
-    case "add":
-      return actionNewPolicy(flags.config); // add a policy to the config
-    case "remove":
-      return actionRemovePolicy(policyName, flags.config); // add a policy to the config
-    case "modify":
-      return actionPolicyModify(policyName); // add a policy to the config
-    case "count":
-      return actionCount(flags, clientVers); // run the policy counter
-    case "check":
-      return actionCheck(); // count + fail if warranted
-    case "cinch":
-      return actionCinch(); // if there are no breaches, update the baselines to the strictest possible
-    default:
-      throw new Error(`unknown action: ${action}`);
-  }
-};
+  // run!
+  const run = async function (action: string, flags: Flags) {
+    const dir = process.cwd();
+    const configFilePath = flags.config || join(dir, "diffjam.yaml");
 
-const cli = meow(
-  `
-    Usage
-      $ diffjam <action>
+    if (action === "init") {
+      return Config.init(configFilePath);
+    }
 
-    Examples
-      $ diffjam menu
-      $ diffjam count
-      $ diffjam check
-      $ diffjam report
-`,
-  {
-    flags: {
-      config: {
-        type: "string",
-        alias: "c"
+    // Some actions modify the config file, so for those we use a worker pool
+    // in the same thread so that when we modify it the new policy is available
+    async function createRunner(opts: { syncWorkerPool?: boolean } = {}): Promise<Runner | undefined> {
+      if (!opts.syncWorkerPool) workerPool = new WorkerPool(configFilePath, dir);
+
+      const cwd = new CurrentWorkingDirectory(dir);
+      const conf = Config.read(configFilePath);
+      let config: Config
+      try {
+        config = await conf;
+        return new Runner(config, flags, cwd, workerPool || new SingleThreadWorkerPool(config, dir));
+      } catch (err) {
+        if (err instanceof Error) {
+          await logAndQuit(err.message + "\nPlease check your config file at " + configFilePath);
+        } else {
+          await logAndQuit((err as any).message || err);
+        }
       }
     }
-  }
-);
 
-// eslint-disable-next-line no-void
-void run(cli.input[0], cli.input[1], cli.flags);
+    try {
+      switch (action) {
+        case "check":
+          return await (await createRunner())!.check(); // count + fail if warranted
+        case "cinch":
+          return await (await createRunner())!.cinch(); // if there are no breaches, update the baselines to the strictest possible
+        case "add":
+          return await (await createRunner({ syncWorkerPool: true }))!.addPolicy(); // add a policy to the config
+        case "remove":
+          return await (await createRunner({ syncWorkerPool: true }))!.removePolicy(); // remove a policy to the config
+        case "modify":
+          return await (await createRunner({ syncWorkerPool: true }))!.modifyPolicy(); // add a policy to the config
+        case "count":
+          return await (await createRunner())!.count(); // run the policy counter
+        case "bump":
+          return await (await createRunner())!.bump();
+        default:
+          console.error(`unknown command: ${action}`);
+          console.error(cli.help);
+          process.exit(1);
+      }
+    } catch (err) {
+      logAndQuit((err as any).message || err);
+    }
+  };
+
+  // eslint-disable-next-line no-void
+  void run(cli.input[0], cli.flags);
+} else {
+  workerProcess();
+}

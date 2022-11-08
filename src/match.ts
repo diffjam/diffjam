@@ -1,38 +1,37 @@
-import { flatten } from "lodash";
-import { findInString } from "./findInString";
-import { getPathsMatchingPattern } from "./getPathsMatchingPattern";
-import { Needle } from "./Policy";
-import { readFile } from "./readFile";
-
-const cwd = process.cwd()
+import { Policy } from "./Policy";
 
 export interface Match {
-  number: number;
-  line: string;
-  match: string;
+  startLineNumber: number; // the startLineNumber, 1-indexed
+  endLineNumber: number; // the ending line number, 1-indexed
+  startColumn: number
+  endColumn: number
+  found: string; // the match.  we can do squigglies based on its beginning/end
+  startWholeLine: string; // the entire line that the match is in.  used for subsequent needles.
+  startWholeLineFormatted: string;
   path: string;
+  breachPath: string;
 }
-type MatchDict = { [key: string]: Match[] };
 
-export const findMatches = async (filePattern: string, ignorePatterns: string[], search: Needle[], dir: string = cwd) => {
-  // const dir = process.cwd();
-  const filePaths = await getPathsMatchingPattern(dir, filePattern, ignorePatterns);
-  const results: MatchDict = {};
-  // File contents are cached for subsequent calls
-  // so we just use a plain for loop here instead of
-  // doing things in parallel so we can make use of
-  // the cache.
-  for (const path of filePaths) {
-    const contents = await readFile(path);
-    const found = findInString(path, search, contents);
-    if (found.length > 0) {
-      results[path] = found;
-    }
-  }
-  return results;
+export interface FileBreach {
+  startLineNumber: number; // the startLineNumber, 1-indexed
+  endLineNumber: number; // the ending line number, 1-indexed
+  found: string; // the match.  we can do squigglies based on its beginning/end
+  startColumn: number
+  endColumn: number
+  startWholeLine: string; // the entire line that the match is in.  used for subsequent needles.
+  startWholeLineFormatted: string;
+  message: string; // the policy description.
+  severity: 1
+}
+
+export type Result = {
+  policy: Policy
+  matches: Match[]
+}
+
+export type ResultsMap = {
+  [policyName: string]: {
+    policy: Policy
+    matches: Match[]
+  },
 };
-
-export const countMatches = (matches: MatchDict) => {
-  const count = flatten(Object.values(matches)).length;
-  return count;
-}
