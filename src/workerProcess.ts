@@ -44,7 +44,7 @@ export function readyWorker(
 }
 
 export async function workerProcess() {
-  equal(cluster.isPrimary, false, "workerProcess() should only be called in a worker process");
+  equal(cluster.isPrimary || cluster.isMaster, false, "workerProcess() should only be called in a worker process");
 
   let confReady = false;
   const queued: string[] = [];

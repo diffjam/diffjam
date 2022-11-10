@@ -23,7 +23,7 @@ async function logAndQuit(msg: any): Promise<never> {
   }
 }
 
-if (cluster.isPrimary) {
+if (cluster.isPrimary || cluster.isMaster) {
   process.on("unhandledRejection", (err: unknown) => {
     logAndQuit(err);
   });
