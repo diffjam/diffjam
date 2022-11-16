@@ -23,7 +23,7 @@ export class CurrentWorkingDirectory {
     if (gitIgnoreFileName) {
       this.manualDirCrawl(gitIgnoreFileName);
     } else {
-      const gitLsTree = spawn("git", ["ls-tree", "-r", "head", "--name-only"]);
+      const gitLsTree = spawn("git", ["ls-tree", "-r", "HEAD", "--name-only"]);
 
       gitLsTree.on("error", () => this.manualDirCrawl());
 
