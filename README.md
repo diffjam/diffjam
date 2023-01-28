@@ -41,7 +41,7 @@ number of good patterns and help you increase that number of over time.
 
 ## Installing
 
-* `yarn install diffjam --dev`
+* `yarn add diffjam --dev`
 
 
 ## Running
