@@ -67,6 +67,25 @@ describe("Config", () => {
       expect(policy.hiddenFromOutput).toEqual(false);
       expect(policy.ignoreFilePatterns).toEqual(['foo.js']);
     })
+
+    it("allows baselineStrictEqual", () => {
+      const yaml =
+        `policies:
+  myPolicy:
+    baseline: 0
+    description: description
+    baselineStrictEqual: true
+    filePattern: '*.ts'
+    search: TODO  
+`;
+      const conf = Config.fromYaml(yaml, "foo.yaml");
+      const policy = conf.policyMap["myPolicy"];
+      expect(policy.baseline).toEqual(0);
+      expect(policy.description).toEqual("description");
+      expect(policy.search).toEqual(["TODO"]);
+      expect(policy.filePattern).toEqual("*.ts");
+      expect(policy.baselineStrictEqual).toEqual(true);
+    });
   });
 
   describe("#getPolicy", () => {
@@ -124,6 +143,25 @@ describe("Config", () => {
 `
       );
     });
+
+    it("serializes a config with optional params to yaml", () => {
+      const conf = new Config({
+        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], 0, "test.ts", true, true)
+      }, "foo.yaml");
+      expect(conf.toYaml()).toEqual(
+        `policies:
+  myPolicy:
+    baseline: 0
+    baselineStrictEqual: true
+    description: description
+    filePattern: '*.ts'
+    hiddenFromOutput: true
+    ignoreFilePatterns:
+      - test.ts
+    search: TODO
+`
+      );
+    });
   });
 
   describe("#read", async () => {
@@ -151,6 +189,7 @@ describe("Config", () => {
 
       const policy2 = conf.policyMap["myPolicy2"];
       expect(policy2.baseline).toEqual(10);
+      expect(policy2.baselineStrictEqual).toEqual(true);
       expect(policy2.description).toEqual("updated policy file");
       expect(policy2.search).toEqual(["TODO2"]);
       expect(policy2.filePattern).toEqual("**/*.ts");

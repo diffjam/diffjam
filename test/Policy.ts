@@ -13,6 +13,7 @@ describe("Policy", () => {
       expect(policy.search).toEqual(["needle"]);
       expect(policy.baseline).toEqual(0);
       expect(policy.hiddenFromOutput).toEqual(false);
+      expect(policy.baselineStrictEqual).toEqual(false);
     });
   });
 
@@ -91,21 +92,40 @@ describe("Policy", () => {
   });
 
   describe("#isCountAcceptable", () => {
-    it("false when match.length is greater than baseline", () => {
-      const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1);
-      const acceptable = policy.isCountAcceptable({ length: 2 } as any);
-      expect(acceptable).toEqual(false);
-    });
-    it("true when match.length is less than baseline", () => {
-      const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1);
-      const acceptable = policy.isCountAcceptable({ length: 0 } as any);
-      expect(acceptable).toEqual(true);
-    });
-    it("true when match.length equals baseline", () => {
-      const policy = new Policy("test name", "test description", "*.ts", ["needle"], 0);
-      const acceptable = policy.isCountAcceptable({ length: 0 } as any);
-      expect(acceptable).toEqual(true);
-    });
+    describe("when baselineStrictEqual is false, aka the default", () => {
+      it("false when match.length is greater than baseline", () => {
+        const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1);
+        const acceptable = policy.isCountAcceptable({ length: 2 } as any);
+        expect(acceptable).toEqual(false);
+      });
+      it("true when match.length is less than baseline", () => {
+        const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1);
+        const acceptable = policy.isCountAcceptable({ length: 0 } as any);
+        expect(acceptable).toEqual(true);
+      });
+      it("true when match.length equals baseline", () => {
+        const policy = new Policy("test name", "test description", "*.ts", ["needle"], 0);
+        const acceptable = policy.isCountAcceptable({ length: 0 } as any);
+        expect(acceptable).toEqual(true);
+      });
+    })
+    describe("when baselineStrictEqual is true", () => {
+      it("false when match.length is greater than baseline", () => {
+        const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1, undefined, false, true);
+        const acceptable = policy.isCountAcceptable({ length: 2 } as any);
+        expect(acceptable).toEqual(false);
+      });
+      it("false when match.length is less than baseline", () => {
+        const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1, undefined, false, true);
+        const acceptable = policy.isCountAcceptable({ length: 0 } as any);
+        expect(acceptable).toEqual(false);
+      });
+      it("true when match.length equals baseline", () => {
+        const policy = new Policy("test name", "test description", "*.ts", ["needle"], 0, undefined, false, true);
+        const acceptable = policy.isCountAcceptable({ length: 0 } as any);
+        expect(acceptable).toEqual(true);
+      });
+    })
   });
 
   describe("#isCountCinchable", () => {

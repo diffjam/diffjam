@@ -13,7 +13,7 @@ export const logPolicyResult = (result: Result) => {
   if (!result.policy.isCountAcceptable(result.matches)) {
     return console.error(
       `${RED_X} ${chalk.red.bold(result.policy.name)}: ${result.matches.length} (expected ${result.policy.baseline
-      } or fewer)`
+      }${result.policy.baselineStrictEqual ? "" : " or fewer"})`
     );
   }
   return console.log(
@@ -24,7 +24,7 @@ export const logPolicyResult = (result: Result) => {
 const logBreachError = (breach: Result) => {
   console.error(
     `${RED_X} ${chalk.red.bold(breach.policy.name)}: ${breach.matches.length} (expected ${breach.policy.baseline
-    } or fewer)`
+    }${breach.policy.baselineStrictEqual ? "" : " or fewer"})`
   );
 
   const count = Math.min(10, breach.matches.length)
