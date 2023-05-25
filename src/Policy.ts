@@ -21,7 +21,7 @@ export interface PolicyJson {
   search: string | string[];
   baseline: number;
   hiddenFromOutput?: boolean;
-  baselineStrictEqual?: boolean;
+  baselineExactEqual?: boolean;
 }
 
 const escapeStringRegexp = (str: string) =>
@@ -43,7 +43,7 @@ export class Policy {
     public baseline: number,
     ignoreFilePatterns?: string | string[],
     public hiddenFromOutput: boolean = false,
-    public baselineStrictEqual: boolean = false,
+    public baselineExactEqual: boolean = false,
   ) {
     try {
       this.needles = Policy.searchConfigToNeedles(this.search);
@@ -67,7 +67,7 @@ export class Policy {
         this.ignoreFilePatterns = ignoreFilePatterns;
       }
     }
-    this.baselineStrictEqual = baselineStrictEqual;
+    this.baselineExactEqual = baselineExactEqual;
   }
 
   toJson(): PolicyJson {
@@ -79,7 +79,7 @@ export class Policy {
     };
     if (this.hiddenFromOutput) json.hiddenFromOutput = this.hiddenFromOutput;
     if (this.ignoreFilePatterns) json.ignoreFilePatterns = this.ignoreFilePatterns;
-    if (this.baselineStrictEqual) json.baselineStrictEqual = this.baselineStrictEqual;
+    if (this.baselineExactEqual) json.baselineExactEqual = this.baselineExactEqual;
     return json
   }
 
@@ -96,7 +96,7 @@ export class Policy {
   }
 
   isCountAcceptable(matches: Match[]): boolean {
-    if (this.baselineStrictEqual) return matches.length === this.baseline
+    if (this.baselineExactEqual) return matches.length === this.baseline
     return matches.length <= this.baseline;
   }
 
@@ -172,7 +172,7 @@ export class Policy {
         throw new Error("hiddenFromOutput must be a boolean");
       }
 
-      return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput), Boolean(obj.baselineStrictEqual));
+      return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput), Boolean(obj.baselineExactEqual));
     } catch (err) {
       if (err instanceof Error) {
         throw new Error(`Error in policy (${name}): ${err.message}`);

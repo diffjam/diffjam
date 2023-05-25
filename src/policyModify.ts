@@ -35,7 +35,7 @@ const actionCurrentState = async function (name: string, runner: Runner) {
   console.log("search: ", result.policy.search);
   console.log("regexes: ", result.policy.needles);
   console.log("baseline: ", result.policy.baseline);
-  if (result.policy.baselineStrictEqual) console.log("baselineStrictEqual: ", result.policy.baselineStrictEqual);
+  if (result.policy.baselineExactEqual) console.log("baselineExactEqual: ", result.policy.baselineExactEqual);
   console.log("Current count is: ", result.matches.length);
   console.log("matches: ");
   console.log(result.matches);

@@ -13,7 +13,7 @@ describe("Policy", () => {
       expect(policy.search).toEqual(["needle"]);
       expect(policy.baseline).toEqual(0);
       expect(policy.hiddenFromOutput).toEqual(false);
-      expect(policy.baselineStrictEqual).toEqual(false);
+      expect(policy.baselineExactEqual).toEqual(false);
     });
   });
 
@@ -92,7 +92,7 @@ describe("Policy", () => {
   });
 
   describe("#isCountAcceptable", () => {
-    describe("when baselineStrictEqual is false, aka the default", () => {
+    describe("when baselineExactEqual is false, aka the default", () => {
       it("false when match.length is greater than baseline", () => {
         const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1);
         const acceptable = policy.isCountAcceptable({ length: 2 } as any);
@@ -109,7 +109,7 @@ describe("Policy", () => {
         expect(acceptable).toEqual(true);
       });
     })
-    describe("when baselineStrictEqual is true", () => {
+    describe("when baselineExactEqual is true", () => {
       it("false when match.length is greater than baseline", () => {
         const policy = new Policy("test name", "test description", "*.ts", ["needle"], 1, undefined, false, true);
         const acceptable = policy.isCountAcceptable({ length: 2 } as any);
