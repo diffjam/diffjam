@@ -20,7 +20,7 @@ describe("Config", () => {
       expect(policy.baseline).toEqual(0);
       expect(policy.description).toEqual("description");
       expect(policy.search).toEqual(["TODO"]);
-      expect(policy.filePattern).toEqual("*.ts");
+      expect(policy.filePattern).toEqual(["*.ts"]);
       expect(policy.hiddenFromOutput).toEqual(false);
       expect(policy.ignoreFilePatterns).toEqual(undefined);
     })
@@ -42,7 +42,7 @@ describe("Config", () => {
       expect(policy.baseline).toEqual(0);
       expect(policy.description).toEqual("description");
       expect(policy.search).toEqual(["TODO"]);
-      expect(policy.filePattern).toEqual("*.ts");
+      expect(policy.filePattern).toEqual(["*.ts"]);
       expect(policy.hiddenFromOutput).toEqual(false);
       expect(policy.ignoreFilePatterns).toEqual(['foo.js']);
     });
@@ -63,7 +63,7 @@ describe("Config", () => {
       expect(policy.baseline).toEqual(0);
       expect(policy.description).toEqual("description");
       expect(policy.search).toEqual(["TODO"]);
-      expect(policy.filePattern).toEqual("*.ts");
+      expect(policy.filePattern).toEqual(["*.ts"]);
       expect(policy.hiddenFromOutput).toEqual(false);
       expect(policy.ignoreFilePatterns).toEqual(['foo.js']);
     })
@@ -133,7 +133,7 @@ describe("Config", () => {
       expect(policy.baseline).toEqual(129);
       expect(policy.description).toEqual("Don't add TODOS. DO IT NOW!");
       expect(policy.search).toEqual(["TODO"]);
-      expect(policy.filePattern).toEqual("**/*.ts");
+      expect(policy.filePattern).toEqual(["**/*.ts"]);
       expect(policy.hiddenFromOutput).toEqual(false);
     });
 
@@ -146,14 +146,14 @@ describe("Config", () => {
       expect(policy.baseline).toEqual(10);
       expect(policy.description).toEqual("Don't add TODOS. DO IT NOW!");
       expect(policy.search).toEqual(["TODO1"]);
-      expect(policy.filePattern).toEqual("**/*.ts");
+      expect(policy.filePattern).toEqual(["**/*.ts"]);
       expect(policy.hiddenFromOutput).toEqual(false);
 
       const policy2 = conf.policyMap["myPolicy2"];
       expect(policy2.baseline).toEqual(10);
       expect(policy2.description).toEqual("updated policy file");
       expect(policy2.search).toEqual(["TODO2"]);
-      expect(policy2.filePattern).toEqual("**/*.ts");
+      expect(policy2.filePattern).toEqual(["**/*.ts"]);
       expect(policy2.hiddenFromOutput).toEqual(false);
     });
   });
