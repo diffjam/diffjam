@@ -16,7 +16,7 @@ export type Needles = {
 }
 export interface PolicyJson {
   description: string;
-  filePattern: string;
+  filePattern: string | string[];
   ignoreFilePatterns?: string[];
   search: string | string[];
   baseline: number;
@@ -33,16 +33,21 @@ export class Policy {
   public ran: boolean = false;
   public needles: Needles
   public ignoreFilePatterns: undefined | string[];
+  public filePattern: string[]
+  public search: string[]
 
   constructor(
     public name: string,
     public description: string,
-    public filePattern: string,
-    public search: string[],
+    filePattern: string | string[],
+    search: string | string[],
     public baseline: number,
     ignoreFilePatterns?: string | string[],
     public hiddenFromOutput: boolean = false,
   ) {
+    this.search = Array.isArray(search) ? search : [search];
+    this.filePattern = Array.isArray(filePattern) ? filePattern : [filePattern];
+    
     try {
       this.needles = Policy.searchConfigToNeedles(this.search);
     } catch (err) {
@@ -53,11 +58,6 @@ export class Policy {
       }
     }
 
-    this.description = description;
-    this.filePattern = filePattern;
-    this.search = Array.isArray(search) ? search : [search];
-    this.baseline = baseline;
-    this.hiddenFromOutput = hiddenFromOutput;
     if (ignoreFilePatterns && ignoreFilePatterns.length) {
       if (!Array.isArray(ignoreFilePatterns)) {
         this.ignoreFilePatterns = [ignoreFilePatterns];
@@ -70,7 +70,7 @@ export class Policy {
   toJson(): PolicyJson {
     const json: PolicyJson = {
       description: this.description,
-      filePattern: this.filePattern,
+      filePattern: this.filePattern.length === 1 ? this.filePattern[0] : this.filePattern,
       search: this.search.length === 1 ? this.search[0] : this.search,
       baseline: this.baseline,
     };
@@ -80,10 +80,11 @@ export class Policy {
   }
 
   isFileUnderPolicy(filePath: string): boolean {
-    return mm.any(filePath, this.filePattern) && (
-      !this.ignoreFilePatterns ||
-      !mm.any(filePath, this.ignoreFilePatterns)
-    );
+    return this.filePattern.some(filePattern => 
+      mm.any(filePath, filePattern) && (
+        !this.ignoreFilePatterns ||
+        !mm.any(filePath, this.ignoreFilePatterns)
+      ));
   }
 
   processFile(file: FileMatcher, onMatch: (match: Match, policy: this) => void): void {
@@ -144,25 +145,18 @@ export class Policy {
       if (!(isString(obj.search) || (Array.isArray(obj.search) && obj.search.every(isString)))) {
         throw new Error("search must be a string or an array of strings");
       }
-
-      if (!Array.isArray(obj.search)) {
-        obj.search = [obj.search];
-      }
-
-      if (!hasProp(obj, "filePattern")) {
-        throw new Error("filePattern is required");
+      if (!(isString(obj.filePattern) || (Array.isArray(obj.filePattern) && obj.filePattern.every(isString)))) {
+        throw new Error("filePattern must be a string or an array of strings");
       }
       if (!isString(obj.filePattern)) {
         throw new Error("filePattern must be a string");
       }
-
       if (!hasProp(obj, "description")) {
         throw new Error("description is required");
       }
       if (!isString(obj.description)) {
         throw new Error("description must be a string");
       }
-
       if (hasProp(obj, "hiddenFromOutput") && !isBoolean(obj.hiddenFromOutput)) {
         throw new Error("hiddenFromOutput must be a boolean");
       }

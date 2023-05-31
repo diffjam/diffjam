@@ -9,7 +9,7 @@ describe("Policy", () => {
     it("creates a policy with default hiddenFromOutput = false", () => {
       const policy = new Policy("test name", "test description", "*.ts", ["needle"], 0);
       expect(policy.description).toEqual("test description");
-      expect(policy.filePattern).toEqual("*.ts");
+      expect(policy.filePattern).toEqual(["*.ts"]);
       expect(policy.search).toEqual(["needle"]);
       expect(policy.baseline).toEqual(0);
       expect(policy.hiddenFromOutput).toEqual(false);
