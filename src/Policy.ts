@@ -148,9 +148,6 @@ export class Policy {
       if (!(isString(obj.filePattern) || (Array.isArray(obj.filePattern) && obj.filePattern.every(isString)))) {
         throw new Error("filePattern must be a string or an array of strings");
       }
-      if (!isString(obj.filePattern)) {
-        throw new Error("filePattern must be a string");
-      }
       if (!hasProp(obj, "description")) {
         throw new Error("description is required");
       }
