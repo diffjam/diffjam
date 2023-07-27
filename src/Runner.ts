@@ -9,7 +9,7 @@ import { Config } from "./Config";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./cli";
 import { Policy } from "./Policy";
-import { GREEN_CHECK, logCheckFailedError, logResults } from "./log";
+import { GREEN_CHECK, logAllResultDetails, logCheckFailedError, logResults } from "./log";
 import { clientVersion } from "./clientVersion";
 import { commentResults, postMetrics, ResultMap } from "./count";
 import { ResultsMap } from './match';
@@ -288,6 +288,13 @@ export class Runner {
 
   modifyPolicy() {
     return actionPolicyModify(this);
+  }
+
+  async checkPolicy() {
+    const ui = require("./ui");
+    const policy = await ui.select("Select a policy to check: ", this.config.policyMap);
+    const result = await this.runSinglePolicy(policy.name);
+    logAllResultDetails(result);
   }
 
   private processFile(filePath: string) {
