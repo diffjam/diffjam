@@ -46,6 +46,27 @@ const logBreachError = (breach: Result) => {
   }
 };
 
+export const logAllResultDetails = (result: Result) => {
+  console.log(
+    `${chalk.yellow.bold(result.policy.name)} (found ${result.matches.length}, expecting ${result.policy.baseline
+    } or fewer)`
+  );
+
+  const matches = result.matches;
+
+  const longestFilePath = maxBy(matches, example => example.breachPath.length)!.breachPath.length
+
+  const matchLog = matches
+    .map(b => `${chalk.magenta(b.breachPath)}${" ".repeat(longestFilePath - b.breachPath.length)} ${b.startWholeLineFormatted}`)
+    .join("\n")
+
+  console.log(matchLog);
+
+  if (result.policy.description) {
+    console.error(chalk.yellow(result.policy.description));
+  }
+};
+
 export const logResults = (resultsMap: ResultsMap, _filesChecked: string[]) => {
   const all = Object.values(resultsMap);
   const [successes, breaches] = partition(all, ({ policy, matches }) => policy.isCountAcceptable(matches));

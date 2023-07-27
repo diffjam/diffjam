@@ -22,6 +22,7 @@ export const cli = meow(
       $ diffjam count
       $ diffjam modify
       $ diffjam remove
+      $ diffjam breaches
 `,
   {
     flags: {

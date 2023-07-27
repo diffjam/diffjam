@@ -73,6 +73,8 @@ if (cluster.isPrimary || cluster.isMaster) {
           return await (await createRunner())!.count(); // run the policy counter
         case "bump":
           return await (await createRunner())!.bump();
+        case "breaches":
+          return await (await createRunner())!.checkBreachesForPolicy(); // 
         default:
           console.error(`unknown command: ${action}`);
           console.error(cli.help);
