@@ -290,9 +290,9 @@ export class Runner {
     return actionPolicyModify(this);
   }
 
-  async checkPolicy() {
+  async checkBreachesForPolicy() {
     const ui = require("./ui");
-    const policy = await ui.select("Select a policy to check: ", this.config.policyMap);
+    const policy = await ui.select("Select a policy to check for breaches: ", this.config.policyMap);
     const result = await this.runSinglePolicy(policy.name);
     logAllResultDetails(result);
   }
