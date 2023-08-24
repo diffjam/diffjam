@@ -82,7 +82,8 @@ export class Config {
       'styles': {
         '!!null': 'canonical' // dump null as ~
       },
-      'sortKeys': true        // sort object keys
+      'sortKeys': true,        // sort object keys
+      'quotingType': "\""
     });
   }
 

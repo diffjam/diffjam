@@ -119,7 +119,7 @@ describe("Config", () => {
   myPolicy:
     baseline: 0
     description: description
-    filePattern: '*.ts'
+    filePattern: "*.ts"
     search: TODO
 `
       );
