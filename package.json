@@ -1,6 +1,6 @@
 {
   "name": "diffjam",
-  "version": "3.2.4",
+  "version": "3.2.5",
   "description": "cli for diffjam.com",
   "scripts": {
     "build": "make clean && tsc",
