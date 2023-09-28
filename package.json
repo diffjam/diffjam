@@ -1,6 +1,6 @@
 {
   "name": "diffjam",
-  "version": "3.2.6",
+  "version": "3.2.7",
   "description": "cli for diffjam.com",
   "scripts": {
     "build": "make clean && tsc",
@@ -41,7 +41,7 @@
     "inquirer": "5.2.0",
     "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
-    "meow": "^12.1.1",
+    "meow": "^9.0.0",
     "micromatch": "^4.0.4",
     "mz": "2.7.0",
     "urlgrey": "^0.4.4"
