@@ -13,6 +13,7 @@ module.exports = {
             "experimentalObjectRestSpread": true
         }
     },
+    "ignorePatterns": ["lib"],
     "rules": {
         "accessor-pairs": "error",
         "array-bracket-newline": "off",
@@ -49,7 +50,7 @@ module.exports = {
         "dot-location": "off",
         "dot-notation": "error",
         "eol-last": "off",
-        "eqeqeq": ["error", "always", {"null": "ignore"}],
+        "eqeqeq": ["error", "always", { "null": "ignore" }],
         "for-direction": "error",
         "func-call-spacing": "error",
         "func-name-matching": "error",
