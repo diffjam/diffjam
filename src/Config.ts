@@ -15,6 +15,7 @@ function exampleConfig(filePath: string): Config {
       "An example policy ensuring there are no TODOs in the code",
       "src/**/*.*",
       ["regex:TODO"],
+      undefined,
       0
     )
   }, filePath);

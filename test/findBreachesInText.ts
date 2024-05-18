@@ -5,7 +5,7 @@ import expect from "expect";
 
 describe("#findBreachesInText", () => {
   it("can find a policy in a multi-line text", async () => {
-    const conf = new Config({ "TODO": new Policy("TODO", "no more TODOs", "**/*.ts", ["TODO"], 0) }, "foo.yaml");
+    const conf = new Config({ "TODO": new Policy("TODO", "no more TODOs", "**/*.ts", ["TODO"], undefined, 0) }, "foo.yaml");
     const breaches = await findBreachesInText(
       "asdf.ts",
       "this\nis\na\n // TODO later \ntest",
@@ -29,7 +29,7 @@ describe("#findBreachesInText", () => {
     ]);
   });
   it("ignores when the file glob doesn't match", async () => {
-    const conf = new Config({ "TODO": new Policy("TODO", "no more TODOs", "**/*.ts", ["TODO"], 0) }, "foo.yaml");
+    const conf = new Config({ "TODO": new Policy("TODO", "no more TODOs", "**/*.ts", ["TODO"], undefined, 0) }, "foo.yaml");
     const breaches = await findBreachesInText(
       "asdf.txt",
       "this\nis\na\n // TODO later \ntest",

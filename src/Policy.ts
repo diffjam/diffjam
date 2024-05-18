@@ -18,7 +18,8 @@ export interface PolicyJson {
   description: string;
   filePattern: string | string[];
   ignoreFilePatterns?: string[];
-  search: string | string[];
+  search?: string | string[];
+  regex?: string;
   baseline: number;
   hiddenFromOutput?: boolean;
 }
@@ -34,22 +35,44 @@ export class Policy {
   public needles: Needles
   public ignoreFilePatterns: undefined | string[];
   public filePattern: string[]
-  public search: string[]
+  public search?: string[]
 
   constructor(
     public name: string,
     public description: string,
     filePattern: string | string[],
-    search: string | string[],
+    search: undefined | string | string[],
+    public regex: undefined | string,
     public baseline: number,
     ignoreFilePatterns?: string | string[],
     public hiddenFromOutput: boolean = false,
   ) {
-    this.search = Array.isArray(search) ? search : [search];
+    this.search = search ? (Array.isArray(search) ? search : [search]) : undefined;
     this.filePattern = Array.isArray(filePattern) ? filePattern : [filePattern];
     
     try {
-      this.needles = Policy.searchConfigToNeedles(this.search);
+      if (this.search) {
+        this.needles = Policy.searchConfigToNeedles(this.search);
+      } else if (regex) {
+        const regexParts = regex.split('/');
+        if (regexParts.length < 3) {
+          throw new Error(`regex must be in the form /regex/flags`);
+        }
+        const firstPart = regexParts.shift();
+        if (firstPart !== "") {
+          throw new Error(`regex must start with a /`);
+        }
+        const flags = regexParts.pop();
+        const rest = regexParts.join('/');
+        this.needles = {
+          regex: new RegExp(rest, flags),
+          otherRegexes: [],
+          positive: [],
+          negative: [],
+        };
+      } else {
+        throw new Error(`regex or search is required`);
+      }
     } catch (err) {
       if (err instanceof Error) {
         throw new Error(`Error in policy (${name}): ${err.message}`);
@@ -71,7 +94,8 @@ export class Policy {
     const json: PolicyJson = {
       description: this.description,
       filePattern: this.filePattern.length === 1 ? this.filePattern[0] : this.filePattern,
-      search: this.search.length === 1 ? this.search[0] : this.search,
+      search: this.search ? (this.search.length === 1 ? this.search[0] : this.search) : undefined,
+      regex: this.regex,
       baseline: this.baseline,
     };
     if (this.hiddenFromOutput) json.hiddenFromOutput = this.hiddenFromOutput;
@@ -139,11 +163,14 @@ export class Policy {
       if (!isNumber(obj.baseline)) {
         throw new Error("baseline must be a number");
       }
-      if (!hasProp(obj, "search")) {
-        throw new Error("search is required");
-      }
-      if (!(isString(obj.search) || (Array.isArray(obj.search) && obj.search.every(isString)))) {
+      if (obj.search && !(isString(obj.search) || (Array.isArray(obj.search) && obj.search.every(isString)))) {
         throw new Error("search must be a string or an array of strings");
+      }
+      if (obj.regex && !isString(obj.regex)) {
+        throw new Error("regex must be a string");
+      }
+      if (!obj.regex && !obj.search) {
+        throw new Error("regex or search is required");
       }
       if (!(isString(obj.filePattern) || (Array.isArray(obj.filePattern) && obj.filePattern.every(isString)))) {
         throw new Error("filePattern must be a string or an array of strings");
@@ -158,7 +185,7 @@ export class Policy {
         throw new Error("hiddenFromOutput must be a boolean");
       }
 
-      return new Policy(name, obj.description, obj.filePattern, obj.search, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
+      return new Policy(name, obj.description, obj.filePattern, obj.search, obj.regex, obj.baseline, obj.ignoreFilePatterns, Boolean(obj.hiddenFromOutput));
     } catch (err) {
       if (err instanceof Error) {
         throw new Error(`Error in policy (${name}): ${err.message}`);

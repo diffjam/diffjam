@@ -193,31 +193,27 @@ export class Runner {
 
     const name = await ui.textInput("Enter a name for this policy: ");
 
-    const isRegex = await ui.confirm("Is this a regex search?");
-
-    let search: string;
+    let search: string | undefined;
+    let regex: string | undefined = undefined;
     const negativeSearchTerms = [];
 
-    if (isRegex) {
-      const regex = await ui.textInput(
-        "Enter the regex to search for: "
-      );
-      search = `regex:${regex}`;
-    } else {
-      search = await ui.textInput(
-        "Enter the string to match : "
+    search = await ui.textInput(
+      "Enter the string to match. Regex can be done in the form /regex/flags : "
+    );
+    if (search!.startsWith("/")) {
+      regex = search!;
+      search = undefined;
+    }
+
+    while (true) {
+      const negativeSearchTerm = await ui.textInput(
+        "Enter any string to negate (or leave blank to continue): "
       );
 
-      while (true) {
-        const negativeSearchTerm = await ui.textInput(
-          "Enter any string to negate (or leave blank to continue): "
-        );
-
-        if (negativeSearchTerm.trim()) {
-          negativeSearchTerms.push(negativeSearchTerm);
-        } else {
-          break;
-        }
+      if (negativeSearchTerm.trim()) {
+        negativeSearchTerms.push(negativeSearchTerm);
+      } else {
+        break;
       }
     }
 
@@ -242,7 +238,7 @@ export class Runner {
       "Give a description for this policy: "
     );
 
-    const policy = new Policy(name, description, filePattern, [search, ...negativeSearchTerms], 0, ignoreFilePatterns);
+    const policy = new Policy(name, description, filePattern, [search, ...negativeSearchTerms], regex, 0, ignoreFilePatterns);
 
     this.config.setPolicy(policy);
     this.policies = [policy];

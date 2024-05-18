@@ -14,6 +14,7 @@ describe("Runner", () => {
       "I don't like hamsters",
       "nested/**/*.*",
       ["hamster"],
+      undefined,
       0
     )
 
@@ -22,6 +23,7 @@ describe("Runner", () => {
       "don't leave console.logs in your code",
       "**/*.*",
       ["regex:console\\.log\\([\\s\\S]*\\)"],
+      undefined,
       0,
       ["1.txt"]
     )
@@ -31,6 +33,7 @@ describe("Runner", () => {
       "please await calls to fireAndForget",
       "nested/**/*.*",
       ["fireAndForget(", "-:await"],
+      undefined,
       0,
     )
 

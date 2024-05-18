@@ -71,9 +71,9 @@ describe("Config", () => {
 
   describe("#getPolicy", () => {
     it("returns the policy by name", () => {
-      const myOtherPolicy = new Policy("", "description", "*.ts", ["TODO"], 0)
+      const myOtherPolicy = new Policy("", "description", "*.ts", ["TODO"], undefined, 0)
       const conf = new Config({
-        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], 0),
+        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], undefined, 0),
         myOtherPolicy,
       }, "foo.yaml");
       expect(conf.getPolicy("myOtherPolicy")).toEqual(myOtherPolicy);
@@ -81,9 +81,9 @@ describe("Config", () => {
   });
   describe("#deletePolicy", () => {
     it("removes the policy by name", () => {
-      const myOtherPolicy = new Policy("myOtherPolicy", "description", "*.ts", ["TODO"], 0)
+      const myOtherPolicy = new Policy("myOtherPolicy", "description", "*.ts", ["TODO"], undefined, 0)
       const conf = new Config({
-        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], 0),
+        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], undefined, 0),
         myOtherPolicy,
       }, "foo.yaml");
       conf.deletePolicy("myOtherPolicy");
@@ -92,9 +92,9 @@ describe("Config", () => {
   });
   describe("#setPolicy", () => {
     it("sets the policy by name", () => {
-      const myOtherPolicy = new Policy("myOtherPolicy", "description", "*.ts", ["TODO"], 0)
+      const myOtherPolicy = new Policy("myOtherPolicy", "description", "*.ts", ["TODO"], undefined, 0)
       const conf = new Config({
-        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], 0),
+        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], undefined, 0),
       }, "foo.yaml");
       conf.setPolicy(myOtherPolicy);
       expect(conf.getPolicy("myOtherPolicy")).toEqual(myOtherPolicy);
@@ -103,8 +103,8 @@ describe("Config", () => {
   describe("#getPolicyNames", () => {
     it("returns the policy names", () => {
       const conf = new Config({
-        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], 0),
-        myOtherPolicy: new Policy("myOtherPolicy", "description", "*.ts", ["TODO"], 0)
+        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], undefined, 0),
+        myOtherPolicy: new Policy("myOtherPolicy", "description", "*.ts", ["TODO"], undefined, 0)
       }, "foo.yaml");
       expect(conf.getPolicyNames()).toEqual(["myPolicy", "myOtherPolicy"]);
     });
@@ -112,7 +112,7 @@ describe("Config", () => {
   describe("#toYaml", () => {
     it("serializes a basic config to yaml", () => {
       const conf = new Config({
-        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], 0)
+        myPolicy: new Policy("myPolicy", "description", "*.ts", ["TODO"], undefined, 0)
       }, "foo.yaml");
       expect(conf.toYaml()).toEqual(
         `policies:
