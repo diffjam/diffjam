@@ -4,7 +4,6 @@ import meow from "meow";
 export interface Flags {
   config?: string;
   verbose?: boolean;
-  record?: boolean;
   ci?: boolean;
 }
 
@@ -28,19 +27,15 @@ export const cli = meow(
     flags: {
       config: {
         type: "string",
-        alias: "c"
+        alias: "c",
       },
       verbose: {
         type: "boolean",
-        alias: "v"
-      },
-      record: {
-        type: "boolean",
-        alias: "r"
+        alias: "v",
       },
       ci: {
         type: "boolean",
-      }
-    }
+      },
+    },
   }
 );

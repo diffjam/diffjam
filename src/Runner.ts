@@ -2,19 +2,22 @@
   Performs top-level actions of the CLI. Connects the file paths found in the
   `CurrentWorkingDirectory` to the worker pool.
 */
-import envCi from 'env-ci';
 import chalk from "chalk";
-import { equal } from 'node:assert';
+import { equal } from "node:assert";
 import { Config } from "./Config";
 import { CurrentWorkingDirectory } from "./CurrentWorkingDirectory";
 import { Flags } from "./cli";
 import { Policy } from "./Policy";
-import { GREEN_CHECK, logAllResultDetails, logCheckFailedError, logResults } from "./log";
-import { clientVersion } from "./clientVersion";
-import { commentResults, postMetrics, ResultMap } from "./count";
-import { ResultsMap } from './match';
-import { actionPolicyModify } from './policyModify';
+import {
+  GREEN_CHECK,
+  logAllResultDetails,
+  logCheckFailedError,
+  logResults,
+} from "./log";
+import { ResultsMap } from "./match";
+import { actionPolicyModify } from "./policyModify";
 
+type ResultMap = { [key: string]: { measurement: number } };
 interface WorkerPool {
   resultsMap: ResultsMap;
   filesChecked: string[];
@@ -42,24 +45,29 @@ export class Runner {
     }
   }
 
-  private run(): Promise<{ resultsMap: ResultsMap, filesChecked: string[] }> {
+  private run(): Promise<{ resultsMap: ResultsMap; filesChecked: string[] }> {
     equal(this.ran, false, "Runner.run() should only be called once");
-    equal(this.policies.length > 0, true, "No policies specified.\nPlease check your config file at " + this.config.filePath);
+    equal(
+      this.policies.length > 0,
+      true,
+      "No policies specified.\nPlease check your config file at " +
+        this.config.filePath
+    );
 
-    return new Promise(resolve => {
+    return new Promise((resolve) => {
       this.workerPool.onResults = () => {
         this.ran = true;
         resolve({
           resultsMap: this.workerPool.resultsMap,
-          filesChecked: this.workerPool.filesChecked
+          filesChecked: this.workerPool.filesChecked,
         });
-      }
+      };
 
       this.cwd.allNonGitIgnoredFiles(
         this.processFile.bind(this),
         this.workerPool.onFilesDone.bind(this.workerPool)
       );
-    })
+    });
   }
 
   async check() {
@@ -69,22 +77,25 @@ export class Runner {
       logCheckFailedError();
       process.exitCode = 1;
     } else {
-      console.log(`\n${GREEN_CHECK} ${chalk.bold(`All policies passed with ${filesChecked.length} matching files checked`)}`);
+      console.log(
+        `\n${GREEN_CHECK} ${chalk.bold(
+          `All policies passed with ${filesChecked.length} matching files checked`
+        )}`
+      );
     }
   }
 
   async count() {
-    const clientVers = clientVersion();
     const start = new Date();
 
     const { resultsMap, filesChecked } = await this.run();
 
-    const { breaches, successes, all } = logResults(resultsMap, filesChecked);
+    const { breaches, all } = logResults(resultsMap, filesChecked);
 
     const results: ResultMap = {};
     for (const result of all) {
       results[result.policy.name] = {
-        measurement: result.matches.length
+        measurement: result.matches.length,
       };
     }
 
@@ -94,41 +105,9 @@ export class Runner {
       logCheckFailedError();
     }
 
-    if (!this.flags.record && !this.flags.ci) {
-      console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
-      return;
-    }
-
-    console.log(chalk.yellow("sending metrics to server..."));
-    verbose &&
-      console.log(chalk.cyan(`successes: ${JSON.stringify(successes)}`));
-    verbose && console.log(chalk.cyan(`breaches: ${JSON.stringify(breaches)}`));
-    const apiKey = process.env.DIFFJAM_API_KEY;
-    if (!apiKey) {
-      console.error(chalk.red("Missing api key!  Could not post metrics."));
-      console.error(
-        chalk.red(
-          "You must have an api key in an environment variable named DIFFJAM_API_KEY"
-        )
-      );
-      process.exitCode = 1;
-      return;
-    }
-    const configJson = this.config.toJson();
-    verbose && console.log("apiKey, config, results: ", apiKey, configJson, results);
-
-    if (this.flags.record) {
-      await postMetrics(apiKey, configJson, results, clientVers);
-    }
-
-    if (this.flags.ci) {
-      if (!envCi().isCi) {
-        throw new Error(`could not detect CI environment`);
-      }
-      await commentResults(apiKey, configJson, results, clientVers);
-    }
-
-    console.log(chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`));
+    console.log(
+      chalk.green.bold(`Done in ${Date.now() - start.getTime()} ms.`)
+    );
   }
 
   async cinch() {
@@ -153,8 +132,11 @@ export class Runner {
         const before = success.policy.baseline;
         success.policy.baseline = success.matches.length;
         console.log(
-          `${GREEN_CHECK} cinching ${chalk.bold(success.policy.name)} from ${before
-          } to ${chalk.bold(success.matches.length.toString())}!`
+          `${GREEN_CHECK} cinching ${chalk.bold(
+            success.policy.name
+          )} from ${before} to ${chalk.bold(
+            success.matches.length.toString()
+          )}!`
         );
       }
     }
@@ -162,7 +144,11 @@ export class Runner {
     if (anyCinched) {
       this.config.write();
     } else {
-      console.log(`${GREEN_CHECK} ${chalk.bold("All policies are already exactly at their baseline, so none were cinched")}`);
+      console.log(
+        `${GREEN_CHECK} ${chalk.bold(
+          "All policies are already exactly at their baseline, so none were cinched"
+        )}`
+      );
     }
   }
 
@@ -175,15 +161,20 @@ export class Runner {
       const before = breach.policy.baseline;
       breach.policy.baseline = breach.matches.length;
       console.log(
-        `🎚 bumping ${chalk.bold(breach.policy.name)} from ${before
-        } to ${chalk.bold(breach.matches.length.toString())}!`
+        `🎚 bumping ${chalk.bold(
+          breach.policy.name
+        )} from ${before} to ${chalk.bold(breach.matches.length.toString())}!`
       );
     }
 
     if (breaches.length) {
       this.config.write();
     } else {
-      console.log(`${GREEN_CHECK} ${chalk.bold("All policies are already exactly at their baseline, so none were bumped")}`);
+      console.log(
+        `${GREEN_CHECK} ${chalk.bold(
+          "All policies are already exactly at their baseline, so none were bumped"
+        )}`
+      );
     }
   }
 
@@ -199,14 +190,10 @@ export class Runner {
     const negativeSearchTerms = [];
 
     if (isRegex) {
-      const regex = await ui.textInput(
-        "Enter the regex to search for: "
-      );
+      const regex = await ui.textInput("Enter the regex to search for: ");
       search = `regex:${regex}`;
     } else {
-      search = await ui.textInput(
-        "Enter the string to match : "
-      );
+      search = await ui.textInput("Enter the string to match : ");
 
       while (true) {
         const negativeSearchTerm = await ui.textInput(
@@ -225,7 +212,7 @@ export class Runner {
       "Enter the filePattern to search for this policy: "
     );
 
-    const ignoreFilePatterns = []
+    const ignoreFilePatterns = [];
     while (true) {
       const ignoreFilePattern = await ui.textInput(
         "Enter any filePatterns to ignore (or leave blank to continue): "
@@ -242,13 +229,20 @@ export class Runner {
       "Give a description for this policy: "
     );
 
-    const policy = new Policy(name, description, filePattern, [search, ...negativeSearchTerms], 0, ignoreFilePatterns);
+    const policy = new Policy(
+      name,
+      description,
+      filePattern,
+      [search, ...negativeSearchTerms],
+      0,
+      ignoreFilePatterns
+    );
 
     this.config.setPolicy(policy);
     this.policies = [policy];
     this.workerPool.resultsMap[policy.name] = {
       policy,
-      matches: []
+      matches: [],
     };
 
     const { resultsMap, filesChecked } = await this.run();
@@ -280,7 +274,10 @@ export class Runner {
 
   async removePolicy() {
     const ui = require("./ui");
-    const policy = await ui.select("Select a policy to remove: ", this.config.policyMap);
+    const policy = await ui.select(
+      "Select a policy to remove: ",
+      this.config.policyMap
+    );
     await this.config.deletePolicy(policy.name);
     await this.config.write();
     console.log(`Removed ${policy.name}`);
@@ -292,13 +289,18 @@ export class Runner {
 
   async checkBreachesForPolicy() {
     const ui = require("./ui");
-    const policy = await ui.select("Select a policy to check for breaches: ", this.config.policyMap);
+    const policy = await ui.select(
+      "Select a policy to check for breaches: ",
+      this.config.policyMap
+    );
     const result = await this.runSinglePolicy(policy.name);
     logAllResultDetails(result);
   }
 
   private processFile(filePath: string) {
-    const isUnderPolicy = this.policies.some(policy => policy.isFileUnderPolicy(filePath));
+    const isUnderPolicy = this.policies.some((policy) =>
+      policy.isFileUnderPolicy(filePath)
+    );
     if (!isUnderPolicy) return;
     this.workerPool.processFile(filePath);
   }
