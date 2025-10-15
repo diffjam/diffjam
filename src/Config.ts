@@ -5,19 +5,31 @@
 import { dump, load } from "js-yaml";
 import { hasProp } from "./hasProp";
 import { Policy, PolicyJson } from "./Policy";
-import { exists as fileExists, readFile, writeFile } from "mz/fs";
+import { access as fileAccess, readFile, writeFile } from "fs/promises";
+import { constants as fsConstants } from "fs";
 
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    await fileAccess(filePath, fsConstants.F_OK);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 
 function exampleConfig(filePath: string): Config {
-  return new Config({
-    "Example policy": new Policy(
-      "Example policy",
-      "An example policy ensuring there are no TODOs in the code",
-      "src/**/*.*",
-      ["regex:TODO"],
-      0
-    )
-  }, filePath);
+  return new Config(
+    {
+      "Example policy": new Policy(
+        "Example policy",
+        "An example policy ensuring there are no TODOs in the code",
+        "src/**/*.*",
+        ["regex:TODO"],
+        0
+      ),
+    },
+    filePath
+  );
 }
 
 export type PolicyMap = { [name: string]: Policy };
@@ -27,10 +39,7 @@ export interface ConfigJson {
 }
 
 export class Config {
-  constructor(
-    public policyMap: PolicyMap,
-    public filePath: string
-  ) { }
+  constructor(public policyMap: PolicyMap, public filePath: string) {}
 
   static fromYaml(yaml: string, filePath: string) {
     const obj = load(yaml) as any;
@@ -79,21 +88,16 @@ export class Config {
   toYaml(): string {
     const object = this.toJson();
     return dump(object, {
-      'styles': {
-        '!!null': 'canonical' // dump null as ~
+      styles: {
+        "!!null": "canonical", // dump null as ~
       },
-      'sortKeys': true,        // sort object keys
-      'quotingType': "\""
+      sortKeys: true, // sort object keys
+      quotingType: '"',
     });
   }
 
   async write() {
-    return new Promise<void>((resolve, reject) => {
-      writeFile(this.filePath, this.toYaml(), { encoding: "utf8" }, err => {
-        if (err) return reject(err);
-        return resolve();
-      })
-    });
+    await writeFile(this.filePath, this.toYaml(), { encoding: "utf8" });
   }
 
   async savePolicy(policy: Policy) {
@@ -102,18 +106,13 @@ export class Config {
   }
 
   static async read(filePath: string): Promise<Config> {
-    return new Promise((resolve, reject) => {
-      readFile(filePath, { encoding: "utf8" }, (err, fileContents) => {
-        if (err) {
-          return resolve(new Config({}, filePath));
-        }
-        try {
-          return resolve(Config.fromYaml(fileContents, filePath));
-        } catch (e) {
-          return reject(e);
-        }
-      });
-    });
+    let fileContents: string;
+    try {
+      fileContents = await readFile(filePath, { encoding: "utf8" });
+    } catch (e) {
+      return new Config({}, filePath);
+    }
+    return Config.fromYaml(fileContents, filePath);
   }
 
   static async init(filePath: string) {
@@ -122,7 +121,7 @@ export class Config {
       process.exit(1);
     }
 
-    const config = exampleConfig(filePath)
+    const config = exampleConfig(filePath);
     return config.write();
   }
 }
