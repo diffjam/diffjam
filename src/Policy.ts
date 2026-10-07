@@ -79,12 +79,32 @@ export class Policy {
     return json
   }
 
+  // `mm.any` recompiles its globs on every call, which dominates the runtime on large repos
+  // (every file is checked against every policy), so compile them once and reuse the matchers.
+  private fileMatchers?: {
+    filePattern: string[];
+    ignoreFilePatterns: string[] | undefined;
+    include: Array<(filePath: string) => boolean>;
+    ignore: Array<(filePath: string) => boolean>;
+  };
+
+  private getFileMatchers() {
+    const cached = this.fileMatchers;
+    if (cached && cached.filePattern === this.filePattern && cached.ignoreFilePatterns === this.ignoreFilePatterns) {
+      return cached;
+    }
+    return this.fileMatchers = {
+      filePattern: this.filePattern,
+      ignoreFilePatterns: this.ignoreFilePatterns,
+      include: this.filePattern.map(pattern => mm.matcher(pattern)),
+      ignore: (this.ignoreFilePatterns || []).map(pattern => mm.matcher(pattern)),
+    };
+  }
+
   isFileUnderPolicy(filePath: string): boolean {
-    return this.filePattern.some(filePattern => 
-      mm.any(filePath, filePattern) && (
-        !this.ignoreFilePatterns ||
-        !mm.any(filePath, this.ignoreFilePatterns)
-      ));
+    const { include, ignore } = this.getFileMatchers();
+    return include.some(isIncluded => isIncluded(filePath)) &&
+      !ignore.some(isIgnored => isIgnored(filePath));
   }
 
   processFile(file: FileMatcher, onMatch: (match: Match, policy: this) => void): void {

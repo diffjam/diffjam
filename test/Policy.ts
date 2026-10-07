@@ -16,6 +16,45 @@ describe("Policy", () => {
     });
   });
 
+  describe("#isFileUnderPolicy", () => {
+    it("matches files against any filePattern", () => {
+      const policy = new Policy("name", "description", ["src/**/*.ts", "test/**/*.ts"], ["needle"], 0);
+      expect(policy.isFileUnderPolicy("src/a/b.ts")).toEqual(true);
+      expect(policy.isFileUnderPolicy("test/c.ts")).toEqual(true);
+      expect(policy.isFileUnderPolicy("lib/c.ts")).toEqual(false);
+      expect(policy.isFileUnderPolicy("src/a/b.js")).toEqual(false);
+    });
+
+    it("excludes files matching any ignoreFilePattern", () => {
+      const policy = new Policy("name", "description", "src/**/*.ts", ["needle"], 0, ["src/**/*.test.ts", "src/gen/**"]);
+      expect(policy.isFileUnderPolicy("src/a/b.ts")).toEqual(true);
+      expect(policy.isFileUnderPolicy("src/a/b.test.ts")).toEqual(false);
+      expect(policy.isFileUnderPolicy("src/gen/x.ts")).toEqual(false);
+    });
+
+    it("gives the same answer when called repeatedly", () => {
+      const policy = new Policy("name", "description", "src/**/*.ts", ["needle"], 0, ["src/**/*.test.ts"]);
+      for (let i = 0; i < 3; i++) {
+        expect(policy.isFileUnderPolicy("src/a.ts")).toEqual(true);
+        expect(policy.isFileUnderPolicy("src/a.test.ts")).toEqual(false);
+      }
+    });
+
+    it("picks up filePattern and ignoreFilePatterns that are reassigned after the first call", () => {
+      const policy = new Policy("name", "description", "src/**/*.ts", ["needle"], 0);
+      expect(policy.isFileUnderPolicy("lib/a.ts")).toEqual(false);
+      expect(policy.isFileUnderPolicy("src/a.test.ts")).toEqual(true);
+
+      policy.filePattern = ["lib/**/*.ts"];
+      expect(policy.isFileUnderPolicy("lib/a.ts")).toEqual(true);
+      expect(policy.isFileUnderPolicy("src/a.ts")).toEqual(false);
+
+      policy.ignoreFilePatterns = ["lib/**/*.test.ts"];
+      expect(policy.isFileUnderPolicy("lib/a.ts")).toEqual(true);
+      expect(policy.isFileUnderPolicy("lib/a.test.ts")).toEqual(false);
+    });
+  });
+
   describe("#fromJson", () => {
     it("logs a descriptive error with the policy name and exits the process if the policy is missing a required field", () => {
       expect(() => {
